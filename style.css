@@ -351,3 +351,31 @@
     }
 
 }
+
+/* =========================
+   HAND LANDMARK CANVAS
+========================= */
+
+#handCanvas {
+    position: absolute;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    transform: scaleX(-1);
+
+    pointer-events: none;
+
+    z-index: 2;
+}
+
+.camera-guide {
+    z-index: 3;
+}
+
+.camera-status {
+    z-index: 4;
+}
