@@ -1,35 +1,41 @@
 /* =====================================================
    SIGNBRIDGE
-   Camera + MediaPipe Hand Tracking
+   Camera + Real-Time Hand Landmark Detection
 ===================================================== */
 
-let cameraStream = null;
-let cameraOpen = false;
-
-let handLandmarker = null;
-let animationFrameId = null;
-let lastVideoTime = -1;
+import {
+    FilesetResolver,
+    HandLandmarker,
+    DrawingUtils
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs";
 
 
 /* =====================================================
-   MEDIAPIPE
+   GLOBALS
 ===================================================== */
 
-async function loadHandModel() {
+let cameraStream = null;
+let handLandmarker = null;
+let drawingUtils = null;
+
+let cameraRunning = false;
+let animationFrame = null;
+
+let lastTimestamp = 0;
+
+
+/* =====================================================
+   MODEL
+===================================================== */
+
+async function createHandLandmarker() {
+
+    updateDetectionText("Loading hand tracking...");
+    updateTrackingHint("Preparing the hand detection model...");
 
     try {
 
-        const vision = await import(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs"
-        );
-
-        const {
-            FilesetResolver,
-            HandLandmarker
-        } = vision;
-
-
-        const filesetResolver =
+        const vision =
             await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
             );
@@ -37,7 +43,7 @@ async function loadHandModel() {
 
         handLandmarker =
             await HandLandmarker.createFromOptions(
-                filesetResolver,
+                vision,
                 {
                     baseOptions: {
                         modelAssetPath:
@@ -50,17 +56,17 @@ async function loadHandModel() {
 
                     numHands: 2,
 
-                    minHandDetectionConfidence: 0.5,
+                    minHandDetectionConfidence: 0.3,
 
-                    minHandPresenceConfidence: 0.5,
+                    minHandPresenceConfidence: 0.3,
 
-                    minTrackingConfidence: 0.5
+                    minTrackingConfidence: 0.3
                 }
             );
 
 
         console.log(
-            "SignBridge: Hand model ready."
+            "SIGNBRIDGE: Hand Landmarker loaded successfully."
         );
 
         return true;
@@ -68,8 +74,16 @@ async function loadHandModel() {
     } catch (error) {
 
         console.error(
-            "MediaPipe loading error:",
+            "SIGNBRIDGE: Hand Landmarker failed:",
             error
+        );
+
+        updateDetectionText(
+            "Hand tracking failed"
+        );
+
+        updateTrackingHint(
+            "The camera is working, but the detection model could not start."
         );
 
         return false;
@@ -83,15 +97,16 @@ async function loadHandModel() {
 
 async function openCamera() {
 
-    if (cameraOpen) {
-        closeCamera();
+    if (cameraRunning) {
         return;
     }
 
 
     try {
 
-        /* First open camera */
+        /* ---------------------------------------------
+           CAMERA PERMISSION
+        --------------------------------------------- */
 
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
@@ -109,13 +124,16 @@ async function openCamera() {
                 },
 
                 audio: false
+
             });
 
 
-        cameraOpen = true;
+        cameraRunning = true;
 
 
-        /* Show camera immediately */
+        /* ---------------------------------------------
+           CREATE CAMERA UI
+        --------------------------------------------- */
 
         createCameraInterface();
 
@@ -126,32 +144,40 @@ async function openCamera() {
             );
 
 
+        video.srcObject =
+            cameraStream;
+
+
         await video.play();
 
 
-        updateDetectionText(
-            "Loading hand tracking..."
-        );
+        /* ---------------------------------------------
+           LOAD MODEL
+        --------------------------------------------- */
+
+        const loaded =
+            await createHandLandmarker();
 
 
-        /* Load MediaPipe */
-
-        const modelReady =
-            await loadHandModel();
-
-
-        if (!modelReady) {
-
-            updateDetectionText(
-                "Camera ready"
-            );
-
-            updateTrackingHint(
-                "Hand tracking could not load. Check your internet connection."
-            );
-
+        if (!loaded) {
             return;
         }
+
+
+        /* ---------------------------------------------
+           CANVAS
+        --------------------------------------------- */
+
+        const canvas =
+            document.getElementById(
+                "handCanvas"
+            );
+
+
+        drawingUtils =
+            new DrawingUtils(
+                canvas.getContext("2d")
+            );
 
 
         updateDetectionText(
@@ -163,18 +189,25 @@ async function openCamera() {
         );
 
 
-        startHandTracking();
+        /* ---------------------------------------------
+           START DETECTION
+        --------------------------------------------- */
+
+        startDetection(
+            video,
+            canvas
+        );
 
 
     } catch (error) {
 
         console.error(
-            "Camera error:",
+            "SIGNBRIDGE CAMERA ERROR:",
             error
         );
 
 
-        cameraOpen = false;
+        cameraRunning = false;
 
 
         if (cameraStream) {
@@ -191,19 +224,29 @@ async function openCamera() {
 
         alert(
             "Camera could not be opened.\n\n" +
-            "Please allow camera permission and try again."
+            "Please make sure camera permission is allowed."
         );
 
     }
-
 }
 
 
 /* =====================================================
-   CAMERA INTERFACE
+   CAMERA UI
 ===================================================== */
 
 function createCameraInterface() {
+
+    const oldOverlay =
+        document.getElementById(
+            "cameraOverlay"
+        );
+
+
+    if (oldOverlay) {
+        oldOverlay.remove();
+    }
+
 
     const overlay =
         document.createElement("div");
@@ -312,7 +355,7 @@ function createCameraInterface() {
 
 
                 <div id="detectedSign">
-                    Starting camera...
+                    Starting...
                 </div>
 
 
@@ -320,12 +363,13 @@ function createCameraInterface() {
                     class="result-hint"
                     id="trackingHint"
                 >
-                    Initialising...
+                    Initialising camera...
                 </div>
 
             </div>
 
         </div>
+
     `;
 
 
@@ -334,18 +378,10 @@ function createCameraInterface() {
     );
 
 
-    const video =
-        document.getElementById(
-            "cameraVideo"
-        );
-
-
-    video.srcObject =
-        cameraStream;
-
-
     document
-        .getElementById("closeCamera")
+        .getElementById(
+            "closeCamera"
+        )
         .addEventListener(
             "click",
             closeCamera
@@ -354,7 +390,7 @@ function createCameraInterface() {
 
     overlay.addEventListener(
         "click",
-        (event) => {
+        event => {
 
             if (
                 event.target === overlay
@@ -366,36 +402,25 @@ function createCameraInterface() {
 
         }
     );
-
 }
 
 
 /* =====================================================
-   HAND TRACKING
+   START DETECTION
 ===================================================== */
 
-function startHandTracking() {
-
-    const video =
-        document.getElementById(
-            "cameraVideo"
-        );
-
-
-    const canvas =
-        document.getElementById(
-            "handCanvas"
-        );
-
+function startDetection(
+    video,
+    canvas
+) {
 
     if (
+        !handLandmarker ||
         !video ||
-        !canvas ||
-        !handLandmarker
+        !canvas
     ) {
 
         return;
-
     }
 
 
@@ -403,252 +428,194 @@ function startHandTracking() {
         canvas.getContext("2d");
 
 
-    function detectHands() {
+    function detect() {
+
+        if (!cameraRunning) {
+            return;
+        }
+
+
+        /* ---------------------------------------------
+           MAKE CANVAS SAME SIZE AS VIDEO
+        --------------------------------------------- */
 
         if (
-            !cameraOpen ||
-            !handLandmarker
+            video.videoWidth > 0 &&
+            video.videoHeight > 0
         ) {
 
-            return;
+            if (
+                canvas.width !==
+                video.videoWidth
+            ) {
+
+                canvas.width =
+                    video.videoWidth;
+            }
+
+
+            if (
+                canvas.height !==
+                video.videoHeight
+            ) {
+
+                canvas.height =
+                    video.videoHeight;
+            }
 
         }
 
+
+        /* ---------------------------------------------
+           CLEAR OLD LANDMARKS
+        --------------------------------------------- */
+
+        context.clearRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+
+        /* ---------------------------------------------
+           DETECT HAND
+        --------------------------------------------- */
 
         if (
             video.readyState >=
             HTMLMediaElement.HAVE_CURRENT_DATA
         ) {
 
-            if (
-                video.currentTime !==
-                lastVideoTime
-            ) {
+            try {
 
-                lastVideoTime =
-                    video.currentTime;
+                /*
+                 * MediaPipe requires an increasing
+                 * timestamp for VIDEO mode.
+                 */
 
-
-                canvas.width =
-                    video.videoWidth;
-
-                canvas.height =
-                    video.videoHeight;
+                const now =
+                    Date.now();
 
 
-                context.clearRect(
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height
+                lastTimestamp =
+                    Math.max(
+                        now,
+                        lastTimestamp + 1
+                    );
+
+
+                const result =
+                    handLandmarker.detectForVideo(
+                        video,
+                        lastTimestamp
+                    );
+
+
+                drawResults(
+                    result,
+                    canvas,
+                    context
                 );
 
 
-                try {
-
-                    const results =
-                        handLandmarker.detectForVideo(
-                            video,
-                            performance.now()
-                        );
+                updateResultText(
+                    result
+                );
 
 
-                    drawHandLandmarks(
-                        results,
-                        canvas,
-                        context
-                    );
+            } catch (error) {
 
-
-                    updateTrackingStatus(
-                        results
-                    );
-
-
-                } catch (error) {
-
-                    console.error(
-                        "Detection error:",
-                        error
-                    );
-
-                }
+                console.error(
+                    "Detection error:",
+                    error
+                );
 
             }
 
         }
 
 
-        animationFrameId =
+        animationFrame =
             requestAnimationFrame(
-                detectHands
+                detect
             );
-
     }
 
 
-    detectHands();
-
+    detect();
 }
 
 
 /* =====================================================
-   DRAW LANDMARKS
+   DRAW HAND LANDMARKS
 ===================================================== */
 
-function drawHandLandmarks(
-    results,
+function drawResults(
+    result,
     canvas,
     context
 ) {
 
     if (
-        !results ||
-        !results.landmarks
+        !result ||
+        !result.landmarks ||
+        result.landmarks.length === 0
     ) {
 
         return;
-
     }
 
 
-    const connections = [
+    for (
+        const landmarks
+        of result.landmarks
+    ) {
 
-        [0, 1],
-        [1, 2],
-        [2, 3],
-        [3, 4],
+        /*
+         * Draw the official MediaPipe
+         * hand connections.
+         */
 
-        [0, 5],
-        [5, 6],
-        [6, 7],
-        [7, 8],
-
-        [5, 9],
-        [9, 10],
-        [10, 11],
-        [11, 12],
-
-        [9, 13],
-        [13, 14],
-        [14, 15],
-        [15, 16],
-
-        [13, 17],
-        [17, 18],
-        [18, 19],
-        [19, 20],
-
-        [0, 17]
-
-    ];
+        drawingUtils.drawConnectors(
+            landmarks,
+            HandLandmarker.HAND_CONNECTIONS,
+            {
+                color: "#e47b67",
+                lineWidth: 5
+            }
+        );
 
 
-    results.landmarks.forEach(
-        (landmarks) => {
+        /*
+         * Draw landmark points.
+         */
 
+        drawingUtils.drawLandmarks(
+            landmarks,
+            {
+                color: "#7655a8",
+                lineWidth: 2,
+                radius: 5
+            }
+        );
 
-            /* Lines */
-
-            context.beginPath();
-
-
-            connections.forEach(
-                ([start, end]) => {
-
-                    const startPoint =
-                        landmarks[start];
-
-                    const endPoint =
-                        landmarks[end];
-
-
-                    context.moveTo(
-                        startPoint.x *
-                            canvas.width,
-
-                        startPoint.y *
-                            canvas.height
-                    );
-
-
-                    context.lineTo(
-                        endPoint.x *
-                            canvas.width,
-
-                        endPoint.y *
-                            canvas.height
-                    );
-
-                }
-            );
-
-
-            context.strokeStyle =
-                "#e47b67";
-
-            context.lineWidth = 3;
-
-            context.stroke();
-
-
-            /* Points */
-
-            landmarks.forEach(
-                (point) => {
-
-                    context.beginPath();
-
-
-                    context.arc(
-                        point.x *
-                            canvas.width,
-
-                        point.y *
-                            canvas.height,
-
-                        5,
-
-                        0,
-
-                        Math.PI * 2
-                    );
-
-
-                    context.fillStyle =
-                        "#ffffff";
-
-                    context.fill();
-
-
-                    context.strokeStyle =
-                        "#7655a8";
-
-                    context.lineWidth = 2;
-
-                    context.stroke();
-
-                }
-            );
-
-        }
-    );
-
+    }
 }
 
 
 /* =====================================================
-   TRACKING STATUS
+   RESULT TEXT
 ===================================================== */
 
-function updateTrackingStatus(
-    results
+function updateResultText(
+    result
 ) {
 
     const hands =
-        results &&
-        results.landmarks
-            ? results.landmarks.length
+        result &&
+        result.landmarks
+            ? result.landmarks.length
             : 0;
 
 
@@ -659,7 +626,7 @@ function updateTrackingStatus(
         );
 
         updateTrackingHint(
-            "Place your hand inside the frame."
+            "Move your hand inside the frame."
         );
 
         return;
@@ -688,7 +655,6 @@ function updateTrackingStatus(
     updateTrackingHint(
         "Both hands are being tracked."
     );
-
 }
 
 
@@ -712,7 +678,6 @@ function updateDetectionText(
             text;
 
     }
-
 }
 
 
@@ -732,7 +697,6 @@ function updateTrackingHint(
             text;
 
     }
-
 }
 
 
@@ -742,17 +706,16 @@ function updateTrackingHint(
 
 function closeCamera() {
 
-    cameraOpen = false;
+    cameraRunning = false;
 
 
-    if (animationFrameId) {
+    if (animationFrame) {
 
         cancelAnimationFrame(
-            animationFrameId
+            animationFrame
         );
 
-        animationFrameId = null;
-
+        animationFrame = null;
     }
 
 
@@ -765,13 +728,24 @@ function closeCamera() {
             );
 
         cameraStream = null;
-
     }
 
 
-    handLandmarker = null;
+    if (handLandmarker) {
 
-    lastVideoTime = -1;
+        try {
+            handLandmarker.close();
+        } catch (error) {
+            console.log(error);
+        }
+
+        handLandmarker = null;
+    }
+
+
+    drawingUtils = null;
+
+    lastTimestamp = 0;
 
 
     const overlay =
@@ -785,17 +759,16 @@ function closeCamera() {
         overlay.remove();
 
     }
-
 }
 
 
 /* =====================================================
-   SIGN → TEXT BUTTON
+   BUTTONS
 ===================================================== */
 
 document.addEventListener(
     "click",
-    (event) => {
+    event => {
 
         const button =
             event.target.closest(
@@ -828,13 +801,49 @@ document.addEventListener(
         }
 
 
+        const mode =
+            title.textContent.trim();
+
+
+        /* ---------------------------------------------
+           SIGN → TEXT
+        --------------------------------------------- */
+
         if (
-            title.textContent.trim() ===
-            "Sign → Text"
+            mode === "Sign → Text"
         ) {
 
             openCamera();
 
+            return;
+        }
+
+
+        /* ---------------------------------------------
+           TEXT → VOICE
+        --------------------------------------------- */
+
+        if (
+            mode === "Text → Voice"
+        ) {
+
+            textToVoice();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+           VOICE → TEXT
+        --------------------------------------------- */
+
+        if (
+            mode === "Voice → Text"
+        ) {
+
+            voiceToText();
+
+            return;
         }
 
     }
@@ -842,15 +851,138 @@ document.addEventListener(
 
 
 /* =====================================================
-   OTHER BUTTONS
+   TEXT → VOICE
 ===================================================== */
 
-function showComingSoon(mode) {
+function textToVoice() {
 
-    alert(
-        `${mode}\n\nThis feature is coming next!`
+    const text =
+        prompt(
+            "Type something for SignBridge to speak:"
+        );
+
+
+    if (
+        !text ||
+        text.trim() === ""
+    ) {
+
+        return;
+    }
+
+
+    if (
+        !("speechSynthesis" in window)
+    ) {
+
+        alert(
+            "Text-to-speech is not supported in this browser."
+        );
+
+        return;
+    }
+
+
+    const speech =
+        new SpeechSynthesisUtterance(
+            text
+        );
+
+
+    speech.lang =
+        "en-IN";
+
+
+    speech.rate =
+        0.95;
+
+
+    window.speechSynthesis.speak(
+        speech
     );
+}
 
+
+/* =====================================================
+   VOICE → TEXT
+===================================================== */
+
+function voiceToText() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+    if (!SpeechRecognition) {
+
+        alert(
+            "Voice recognition is not supported in this browser."
+        );
+
+        return;
+    }
+
+
+    const recognition =
+        new SpeechRecognition();
+
+
+    recognition.lang =
+        "en-IN";
+
+
+    recognition.interimResults =
+        false;
+
+
+    recognition.continuous =
+        false;
+
+
+    recognition.onstart =
+        () => {
+
+            alert(
+                "Listening... Speak now."
+            );
+
+        };
+
+
+    recognition.onresult =
+        event => {
+
+            const text =
+                event
+                    .results[0][0]
+                    .transcript;
+
+
+            alert(
+                "You said:\n\n" +
+                text
+            );
+
+        };
+
+
+    recognition.onerror =
+        error => {
+
+            console.error(
+                "Speech recognition error:",
+                error
+            );
+
+            alert(
+                "Could not understand the voice."
+            );
+
+        };
+
+
+    recognition.start();
 }
 
 
@@ -866,10 +998,10 @@ const revealElements =
 
 const revealObserver =
     new IntersectionObserver(
-        (entries) => {
+        entries => {
 
             entries.forEach(
-                (entry) => {
+                entry => {
 
                     if (
                         entry.isIntersecting
@@ -892,17 +1024,18 @@ const revealObserver =
 
         },
         {
-            threshold: 0.15
+            threshold: 0.12
         }
     );
 
 
 revealElements.forEach(
-    (element) => {
+    element => {
 
         element.classList.add(
             "reveal"
         );
+
 
         revealObserver.observe(
             element
@@ -976,7 +1109,7 @@ document.body.appendChild(
 
 document.addEventListener(
     "mousemove",
-    (event) => {
+    event => {
 
         cursorGlow.style.left =
             `${event.clientX}px`;
@@ -989,18 +1122,14 @@ document.addEventListener(
 
 
 /* =====================================================
-   FOOTER YEAR
+   CONSOLE
 ===================================================== */
 
-const footerYear =
-    document.querySelector(
-        "footer > span"
-    );
+console.log(
+    "%cSIGNBRIDGE",
+    "font-size:24px;font-weight:bold;color:#7655a8;"
+);
 
-
-if (footerYear) {
-
-    footerYear.textContent =
-        `© ${new Date().getFullYear()} SignBridge`;
-
-}
+console.log(
+    "Accessibility project initialized."
+);
