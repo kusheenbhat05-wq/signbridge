@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>SignBridge — Different Ways to Speak</title>
 
@@ -14,9 +19,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
+
 <body>
 
-    <!-- NAVBAR -->
+    <!-- =========================
+         NAVBAR
+    ========================== -->
+
     <nav class="navbar">
 
         <div class="logo">
@@ -31,8 +40,16 @@
     </nav>
 
 
-    <!-- HERO -->
+    <!-- =========================
+         MAIN CONTENT
+    ========================== -->
+
     <main>
+
+
+        <!-- =========================
+             HERO
+        ========================== -->
 
         <section class="hero">
 
@@ -54,12 +71,18 @@
 
                 <div class="hero-buttons">
 
-                    <a href="#translator" class="primary-btn">
+                    <a
+                        href="#translator"
+                        class="primary-btn"
+                    >
                         Try SignBridge
                         <span>↗</span>
                     </a>
 
-                    <a href="#about" class="secondary-btn">
+                    <a
+                        href="#about"
+                        class="secondary-btn"
+                    >
                         Explore
                     </a>
 
@@ -69,9 +92,11 @@
 
 
             <!-- HERO VISUAL -->
+
             <div class="hero-visual">
 
                 <div class="orbit orbit-one"></div>
+
                 <div class="orbit orbit-two"></div>
 
                 <div class="hand-card">
@@ -83,20 +108,33 @@
                     <div class="recognition-line"></div>
 
                     <div class="recognition-text">
-                        <span>DETECTED SIGN</span>
-                        <strong>HELLO</strong>
+
+                        <span>
+                            DETECTED SIGN
+                        </span>
+
+                        <strong>
+                            HELLO
+                        </strong>
+
                     </div>
 
                 </div>
 
+
                 <div class="floating-card card-top">
+
                     <span>01</span>
                     SIGN
+
                 </div>
 
+
                 <div class="floating-card card-bottom">
+
                     <span>02</span>
                     CONNECT
+
                 </div>
 
             </div>
@@ -104,25 +142,43 @@
         </section>
 
 
-        <!-- MARQUEE -->
+        <!-- =========================
+             MARQUEE
+        ========================== -->
+
         <section class="marquee">
 
             <div class="marquee-track">
+
                 <span>SIGN → TEXT</span>
+
                 <span>TEXT → VOICE</span>
+
                 <span>VOICE → TEXT</span>
+
                 <span>ACCESSIBILITY</span>
+
                 <span>SIGN → TEXT</span>
+
                 <span>TEXT → VOICE</span>
+
                 <span>VOICE → TEXT</span>
+
                 <span>ACCESSIBILITY</span>
+
             </div>
 
         </section>
 
 
-        <!-- TRANSLATOR -->
-        <section class="translator-section" id="translator">
+        <!-- =========================
+             TRANSLATOR
+        ========================== -->
+
+        <section
+            class="translator-section"
+            id="translator"
+        >
 
             <div class="section-heading">
 
@@ -136,8 +192,9 @@
                 </h2>
 
                 <p>
-                    Choose how you want to communicate. SignBridge will
-                    eventually translate between sign language, text and voice.
+                    Choose how you want to communicate.
+                    SignBridge will eventually translate between
+                    sign language, text and voice.
                 </p>
 
             </div>
@@ -145,23 +202,32 @@
 
             <div class="mode-grid">
 
-                <!-- SIGN MODE -->
+
+                <!-- SIGN TO TEXT -->
+
                 <div class="mode-card">
 
-                    <div class="mode-number">01</div>
+                    <div class="mode-number">
+                        01
+                    </div>
 
                     <div class="mode-icon">
                         ✋
                     </div>
 
-                    <h3>Sign → Text</h3>
+                    <h3>
+                        Sign → Text
+                    </h3>
 
                     <p>
                         Use your camera to perform a sign and convert
                         recognised gestures into readable text.
                     </p>
 
-                    <button class="mode-button" onclick="showComingSoon('Sign → Text')">
+                    <button
+                        class="mode-button"
+                        type="button"
+                    >
                         Open Camera
                         <span>↗</span>
                     </button>
@@ -169,23 +235,32 @@
                 </div>
 
 
-                <!-- VOICE MODE -->
+                <!-- TEXT TO VOICE -->
+
                 <div class="mode-card featured">
 
-                    <div class="mode-number">02</div>
+                    <div class="mode-number">
+                        02
+                    </div>
 
                     <div class="mode-icon">
                         🔊
                     </div>
 
-                    <h3>Text → Voice</h3>
+                    <h3>
+                        Text → Voice
+                    </h3>
 
                     <p>
                         Type a message and let your device speak it aloud,
                         making communication easier for everyone.
                     </p>
 
-                    <button class="mode-button" onclick="showComingSoon('Text → Voice')">
+                    <button
+                        class="mode-button"
+                        type="button"
+                        onclick="showComingSoon('Text → Voice')"
+                    >
                         Start Speaking
                         <span>↗</span>
                     </button>
@@ -194,22 +269,31 @@
 
 
                 <!-- VOICE TO TEXT -->
+
                 <div class="mode-card">
 
-                    <div class="mode-number">03</div>
+                    <div class="mode-number">
+                        03
+                    </div>
 
                     <div class="mode-icon">
                         🎙️
                     </div>
 
-                    <h3>Voice → Text</h3>
+                    <h3>
+                        Voice → Text
+                    </h3>
 
                     <p>
                         Convert spoken communication into text so it can
                         be read instantly on screen.
                     </p>
 
-                    <button class="mode-button" onclick="showComingSoon('Voice → Text')">
+                    <button
+                        class="mode-button"
+                        type="button"
+                        onclick="showComingSoon('Voice → Text')"
+                    >
                         Use Microphone
                         <span>↗</span>
                     </button>
@@ -221,12 +305,19 @@
         </section>
 
 
-        <!-- ABOUT -->
-        <section class="about-section" id="about">
+        <!-- =========================
+             ABOUT
+        ========================== -->
+
+        <section
+            class="about-section"
+            id="about"
+        >
 
             <div class="about-number">
                 03
             </div>
+
 
             <div class="about-content">
 
@@ -246,21 +337,45 @@
                     signing and non-signing people more accessible.
                 </p>
 
+
                 <div class="about-points">
 
                     <div>
-                        <strong>01</strong>
-                        <span>Accessible by design</span>
+
+                        <strong>
+                            01
+                        </strong>
+
+                        <span>
+                            Accessible by design
+                        </span>
+
                     </div>
 
-                    <div>
-                        <strong>02</strong>
-                        <span>Built for real communication</span>
-                    </div>
 
                     <div>
-                        <strong>03</strong>
-                        <span>Focused on meaningful technology</span>
+
+                        <strong>
+                            02
+                        </strong>
+
+                        <span>
+                            Built for real communication
+                        </span>
+
+                    </div>
+
+
+                    <div>
+
+                        <strong>
+                            03
+                        </strong>
+
+                        <span>
+                            Focused on meaningful technology
+                        </span>
+
                     </div>
 
                 </div>
@@ -270,7 +385,10 @@
         </section>
 
 
-        <!-- FINAL CTA -->
+        <!-- =========================
+             FINAL CTA
+        ========================== -->
+
         <section class="cta-section">
 
             <p class="eyebrow">
@@ -282,7 +400,10 @@
                 belongs to <span>everyone.</span>
             </h2>
 
-            <a href="#translator" class="primary-btn">
+            <a
+                href="#translator"
+                class="primary-btn"
+            >
                 Enter SignBridge
                 <span>↗</span>
             </a>
@@ -292,7 +413,10 @@
     </main>
 
 
-    <!-- FOOTER -->
+    <!-- =========================
+         FOOTER
+    ========================== -->
+
     <footer>
 
         <div class="footer-logo">
@@ -310,7 +434,25 @@
     </footer>
 
 
-    <script src="script.js"></script>
+    <!-- =========================
+         MEDIAPIPE
+    ========================== -->
+
+    <script
+        type="module"
+        src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs"
+    ></script>
+
+
+    <!-- =========================
+         OUR JAVASCRIPT
+    ========================== -->
+
+    <script
+        type="module"
+        src="script.js"
+    ></script>
 
 </body>
+
 </html>
