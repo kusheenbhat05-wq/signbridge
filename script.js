@@ -1,16 +1,6 @@
 /* =====================================================
    SIGNBRIDGE
-   Live Camera + MediaPipe Hand Tracking
-===================================================== */
-
-import {
-    FilesetResolver,
-    HandLandmarker
-} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs";
-
-
-/* =====================================================
-   GLOBAL VARIABLES
+   Camera + MediaPipe Hand Tracking
 ===================================================== */
 
 let cameraStream = null;
@@ -18,26 +8,36 @@ let cameraOpen = false;
 
 let handLandmarker = null;
 let animationFrameId = null;
-
 let lastVideoTime = -1;
 
 
 /* =====================================================
-   MEDIAPIPE MODEL
+   MEDIAPIPE
 ===================================================== */
 
-async function createHandLandmarker() {
+async function loadHandModel() {
 
     try {
 
-        const vision =
+        const vision = await import(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs"
+        );
+
+        const {
+            FilesetResolver,
+            HandLandmarker
+        } = vision;
+
+
+        const filesetResolver =
             await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
             );
 
+
         handLandmarker =
             await HandLandmarker.createFromOptions(
-                vision,
+                filesetResolver,
                 {
                     baseOptions: {
                         modelAssetPath:
@@ -58,8 +58,9 @@ async function createHandLandmarker() {
                 }
             );
 
+
         console.log(
-            "SignBridge: Hand Landmarker ready."
+            "SignBridge: Hand model ready."
         );
 
         return true;
@@ -67,7 +68,7 @@ async function createHandLandmarker() {
     } catch (error) {
 
         console.error(
-            "Could not load Hand Landmarker:",
+            "MediaPipe loading error:",
             error
         );
 
@@ -87,7 +88,10 @@ async function openCamera() {
         return;
     }
 
+
     try {
+
+        /* First open camera */
 
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
@@ -110,21 +114,53 @@ async function openCamera() {
 
         cameraOpen = true;
 
+
+        /* Show camera immediately */
+
         createCameraInterface();
 
 
+        const video =
+            document.getElementById(
+                "cameraVideo"
+            );
+
+
+        await video.play();
+
+
+        updateDetectionText(
+            "Loading hand tracking..."
+        );
+
+
+        /* Load MediaPipe */
+
         const modelReady =
-            await createHandLandmarker();
+            await loadHandModel();
 
 
         if (!modelReady) {
 
             updateDetectionText(
-                "Model loading failed"
+                "Camera ready"
+            );
+
+            updateTrackingHint(
+                "Hand tracking could not load. Check your internet connection."
             );
 
             return;
         }
+
+
+        updateDetectionText(
+            "Show your hand"
+        );
+
+        updateTrackingHint(
+            "Place your hand inside the frame."
+        );
 
 
         startHandTracking();
@@ -137,24 +173,41 @@ async function openCamera() {
             error
         );
 
+
+        cameraOpen = false;
+
+
+        if (cameraStream) {
+
+            cameraStream
+                .getTracks()
+                .forEach(
+                    track => track.stop()
+                );
+
+            cameraStream = null;
+        }
+
+
         alert(
-            "Camera access was not available.\n\n" +
-            "Please allow camera permission and make sure " +
-            "you are opening SignBridge through HTTPS / GitHub Pages."
+            "Camera could not be opened.\n\n" +
+            "Please allow camera permission and try again."
         );
 
     }
+
 }
 
 
 /* =====================================================
-   CREATE CAMERA INTERFACE
+   CAMERA INTERFACE
 ===================================================== */
 
 function createCameraInterface() {
 
     const overlay =
         document.createElement("div");
+
 
     overlay.id =
         "cameraOverlay";
@@ -168,7 +221,6 @@ function createCameraInterface() {
                 class="camera-close"
                 id="closeCamera"
                 type="button"
-                aria-label="Close camera"
             >
                 ×
             </button>
@@ -209,8 +261,6 @@ function createCameraInterface() {
                     muted
                 ></video>
 
-
-                <!-- HAND LANDMARK CANVAS -->
 
                 <canvas
                     id="handCanvas"
@@ -270,13 +320,12 @@ function createCameraInterface() {
                     class="result-hint"
                     id="trackingHint"
                 >
-                    Initialising hand detection.
+                    Initialising...
                 </div>
 
             </div>
 
         </div>
-
     `;
 
 
@@ -322,7 +371,7 @@ function createCameraInterface() {
 
 
 /* =====================================================
-   START HAND TRACKING
+   HAND TRACKING
 ===================================================== */
 
 function startHandTracking() {
@@ -344,7 +393,9 @@ function startHandTracking() {
         !canvas ||
         !handLandmarker
     ) {
+
         return;
+
     }
 
 
@@ -356,78 +407,72 @@ function startHandTracking() {
 
         if (
             !cameraOpen ||
-            !video ||
             !handLandmarker
         ) {
+
             return;
+
         }
 
 
         if (
-            video.readyState <
+            video.readyState >=
             HTMLMediaElement.HAVE_CURRENT_DATA
         ) {
 
-            animationFrameId =
-                requestAnimationFrame(
-                    detectHands
+            if (
+                video.currentTime !==
+                lastVideoTime
+            ) {
+
+                lastVideoTime =
+                    video.currentTime;
+
+
+                canvas.width =
+                    video.videoWidth;
+
+                canvas.height =
+                    video.videoHeight;
+
+
+                context.clearRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
                 );
 
-            return;
-        }
+
+                try {
+
+                    const results =
+                        handLandmarker.detectForVideo(
+                            video,
+                            performance.now()
+                        );
 
 
-        if (
-            video.currentTime !==
-            lastVideoTime
-        ) {
-
-            lastVideoTime =
-                video.currentTime;
-
-
-            canvas.width =
-                video.videoWidth;
-
-            canvas.height =
-                video.videoHeight;
-
-
-            context.clearRect(
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-
-            try {
-
-                const results =
-                    handLandmarker.detectForVideo(
-                        video,
-                        performance.now()
+                    drawHandLandmarks(
+                        results,
+                        canvas,
+                        context
                     );
 
 
-                drawHandLandmarks(
-                    results,
-                    canvas,
-                    context
-                );
+                    updateTrackingStatus(
+                        results
+                    );
 
 
-                updateTrackingStatus(
-                    results
-                );
+                } catch (error) {
 
+                    console.error(
+                        "Detection error:",
+                        error
+                    );
 
-            } catch (error) {
-
-                console.error(
-                    "Hand detection error:",
-                    error
-                );
+                }
 
             }
 
@@ -448,7 +493,7 @@ function startHandTracking() {
 
 
 /* =====================================================
-   DRAW HAND LANDMARKS
+   DRAW LANDMARKS
 ===================================================== */
 
 function drawHandLandmarks(
@@ -461,56 +506,52 @@ function drawHandLandmarks(
         !results ||
         !results.landmarks
     ) {
+
         return;
+
     }
+
+
+    const connections = [
+
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 4],
+
+        [0, 5],
+        [5, 6],
+        [6, 7],
+        [7, 8],
+
+        [5, 9],
+        [9, 10],
+        [10, 11],
+        [11, 12],
+
+        [9, 13],
+        [13, 14],
+        [14, 15],
+        [15, 16],
+
+        [13, 17],
+        [17, 18],
+        [18, 19],
+        [19, 20],
+
+        [0, 17]
+
+    ];
 
 
     results.landmarks.forEach(
         (landmarks) => {
 
-            /*
-                MediaPipe hand landmarks
-                contain 21 points.
 
-                We draw each point and connect
-                the hand structure visually.
-            */
-
-
-            const connections = [
-
-                [0, 1],
-                [1, 2],
-                [2, 3],
-                [3, 4],
-
-                [0, 5],
-                [5, 6],
-                [6, 7],
-                [7, 8],
-
-                [5, 9],
-                [9, 10],
-                [10, 11],
-                [11, 12],
-
-                [9, 13],
-                [13, 14],
-                [14, 15],
-                [15, 16],
-
-                [13, 17],
-                [17, 18],
-                [18, 19],
-                [19, 20],
-
-                [0, 17]
-            ];
-
-
-            /* DRAW CONNECTIONS */
+            /* Lines */
 
             context.beginPath();
+
 
             connections.forEach(
                 ([start, end]) => {
@@ -551,7 +592,7 @@ function drawHandLandmarks(
             context.stroke();
 
 
-            /* DRAW LANDMARK POINTS */
+            /* Points */
 
             landmarks.forEach(
                 (point) => {
@@ -604,94 +645,91 @@ function updateTrackingStatus(
     results
 ) {
 
-    const result =
-        document.getElementById(
-            "detectedSign"
-        );
-
-
-    const hint =
-        document.getElementById(
-            "trackingHint"
-        );
-
-
-    if (!result || !hint) {
-        return;
-    }
-
-
-    const handsDetected =
+    const hands =
         results &&
         results.landmarks
             ? results.landmarks.length
             : 0;
 
 
-    if (handsDetected === 0) {
+    if (hands === 0) {
 
-        result.textContent =
-            "No hand detected";
+        updateDetectionText(
+            "No hand detected"
+        );
 
-        hint.textContent =
-            "Place your hand inside the frame.";
-
-        return;
-    }
-
-
-    if (handsDetected === 1) {
-
-        result.textContent =
-            "Hand detected ✓";
-
-        hint.textContent =
-            "21 hand landmarks are being tracked.";
+        updateTrackingHint(
+            "Place your hand inside the frame."
+        );
 
         return;
     }
 
 
-    result.textContent =
-        `${handsDetected} hands detected ✓`;
+    if (hands === 1) {
 
-    hint.textContent =
-        "Both hands are being tracked.";
+        updateDetectionText(
+            "Hand detected ✓"
+        );
+
+        updateTrackingHint(
+            "21 hand landmarks are being tracked."
+        );
+
+        return;
+    }
+
+
+    updateDetectionText(
+        `${hands} hands detected ✓`
+    );
+
+
+    updateTrackingHint(
+        "Both hands are being tracked."
+    );
 
 }
 
 
 /* =====================================================
-   UPDATE RESULT TEXT
+   TEXT HELPERS
 ===================================================== */
 
 function updateDetectionText(
-    message
+    text
 ) {
 
-    const result =
+    const element =
         document.getElementById(
             "detectedSign"
         );
 
-    const hint =
+
+    if (element) {
+
+        element.textContent =
+            text;
+
+    }
+
+}
+
+
+function updateTrackingHint(
+    text
+) {
+
+    const element =
         document.getElementById(
             "trackingHint"
         );
 
 
-    if (result) {
+    if (element) {
 
-        result.textContent =
-            message;
-
-    }
-
-
-    if (hint) {
-
-        hint.textContent =
-            "Please try again.";
+        element.textContent =
+            text;
 
     }
 
@@ -752,7 +790,7 @@ function closeCamera() {
 
 
 /* =====================================================
-   SIGN BUTTON
+   SIGN → TEXT BUTTON
 ===================================================== */
 
 document.addEventListener(
@@ -801,6 +839,19 @@ document.addEventListener(
 
     }
 );
+
+
+/* =====================================================
+   OTHER BUTTONS
+===================================================== */
+
+function showComingSoon(mode) {
+
+    alert(
+        `${mode}\n\nThis feature is coming next!`
+    );
+
+}
 
 
 /* =====================================================
@@ -862,45 +913,7 @@ revealElements.forEach(
 
 
 /* =====================================================
-   BUTTON MICRO INTERACTION
-===================================================== */
-
-const buttons =
-    document.querySelectorAll(
-        ".primary-btn, .secondary-btn, .mode-button"
-    );
-
-
-buttons.forEach(
-    (button) => {
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                button.style.transform =
-                    "scale(0.96)";
-
-
-                setTimeout(
-                    () => {
-
-                        button.style.transform =
-                            "";
-
-                    },
-                    130
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   NAVBAR EFFECT
+   NAVBAR
 ===================================================== */
 
 const navbar =
@@ -923,7 +936,7 @@ window.addEventListener(
         ) {
 
             navbar.style.background =
-                "rgba(247, 240, 231, 0.88)";
+                "rgba(247,240,231,0.88)";
 
             navbar.style.backdropFilter =
                 "blur(14px)";
