@@ -1,574 +1,399 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+  <meta charset="UTF-8">
 
-    <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+  <meta
+    name="description"
+    content="SignBridge - Different ways to speak. One way to connect."
+  >
 
-    <title>SignBridge — Different Ways to Speak</title>
+  <title>SignBridge — Connect Beyond Words</title>
 
-    <meta
-        name="description"
-        content="SignBridge is an accessibility-focused web experience connecting sign language, text and voice."
-    >
-
-    <link rel="stylesheet" href="style.css">
-
+  <link rel="stylesheet" href="style.css">
 </head>
-
 
 <body>
 
+  <!-- ================= NAVBAR ================= -->
 
-    <!-- =================================================
-         NAVBAR
-    ================================================== -->
+  <nav class="navbar">
 
-    <nav class="navbar">
+    <div class="logo">
+      Sign<span>Bridge</span>
+    </div>
 
-        <a href="#" class="logo">
-            SIGN<span>BRIDGE</span>
-        </a>
+    <div class="nav-links">
+      <a href="#home">Home</a>
+      <a href="#how">How It Works</a>
+      <a href="#features">Features</a>
+      <a href="#demo">Try It</a>
+    </div>
 
-        <div class="nav-status">
+    <a href="#demo" class="nav-button">
+      Try SignBridge
+    </a>
 
-            <span class="status-dot"></span>
+  </nav>
 
-            ACCESSIBILITY PROJECT
+
+  <!-- ================= HERO ================= -->
+
+  <main>
+
+    <section id="home" class="hero">
+
+      <div class="hero-content">
+
+        <div class="eyebrow">
+          <span></span>
+          COMMUNICATION WITHOUT BARRIERS
+        </div>
+
+        <h1>
+          Different ways to speak.
+          <br>
+          <em>One way to connect.</em>
+        </h1>
+
+        <p class="hero-text">
+          SignBridge is an accessibility-focused communication
+          platform designed to bridge the gap between sign,
+          speech and text.
+        </p>
+
+        <div class="hero-buttons">
+
+          <button
+            class="primary-button"
+            id="heroCameraBtn"
+          >
+            <span>✦</span>
+            Start Sign Detection
+          </button>
+
+          <a
+            href="#how"
+            class="secondary-button"
+          >
+            Explore how it works
+            <span>↓</span>
+          </a>
 
         </div>
 
-    </nav>
+        <div class="hero-note">
+          Built for inclusive communication
+        </div>
 
+      </div>
 
 
-    <!-- =================================================
-         MAIN
-    ================================================== -->
+      <div class="hero-visual">
 
-    <main>
+        <div class="orb orb-one"></div>
+        <div class="orb orb-two"></div>
 
+        <div class="hero-card">
 
-        <!-- =================================================
-             HERO
-        ================================================== -->
+          <div class="card-top">
+            <span class="live-dot"></span>
+            LIVE COMMUNICATION
+          </div>
 
-        <section class="hero">
+          <div class="hand-symbol">
+            🖐️
+          </div>
 
+          <div class="card-line"></div>
 
-            <div class="hero-content">
+          <div class="card-message">
+            <span>Sign detected</span>
+            <strong>HELLO</strong>
+          </div>
 
-                <p class="eyebrow">
-                    ✦ COMMUNICATION WITHOUT BARRIERS
-                </p>
+        </div>
 
+      </div>
 
-                <h1>
-                    Different ways<br>
-                    <span>to speak.</span>
-                </h1>
+    </section>
 
 
-                <p class="hero-description">
+    <!-- ================= HOW IT WORKS ================= -->
 
-                    SignBridge is an accessibility-focused
-                    web experience designed to connect
-                    sign language with spoken communication.
+    <section id="how" class="section">
 
-                </p>
+      <div class="section-heading">
 
+        <div class="eyebrow">
+          HOW IT WORKS
+        </div>
 
-                <div class="hero-buttons">
+        <h2>
+          Communication,
+          <br>
+          <em>made simpler.</em>
+        </h2>
 
-                    <a
-                        href="#translator"
-                        class="primary-btn"
-                    >
+      </div>
 
-                        Try SignBridge
 
-                        <span>↗</span>
+      <div class="steps">
 
-                    </a>
+        <article class="step-card">
 
+          <div class="step-number">01</div>
 
-                    <a
-                        href="#about"
-                        class="secondary-btn"
-                    >
+          <div class="step-icon">📷</div>
 
-                        Explore
+          <h3>Show your sign</h3>
 
-                    </a>
+          <p>
+            Use your camera to show a hand gesture
+            inside the detection area.
+          </p>
 
-                </div>
+        </article>
 
-            </div>
 
+        <article class="step-card">
 
+          <div class="step-number">02</div>
 
-            <!-- =================================================
-                 HERO VISUAL
-            ================================================== -->
+          <div class="step-icon">✋</div>
 
-            <div class="hero-visual">
+          <h3>Track movement</h3>
 
-                <div class="orbit orbit-one"></div>
+          <p>
+            SignBridge tracks hand landmarks
+            in real time through your camera.
+          </p>
 
-                <div class="orbit orbit-two"></div>
+        </article>
 
 
-                <div class="hand-card">
+        <article class="step-card">
 
-                    <div class="hand-symbol">
-                        🤟
-                    </div>
+          <div class="step-number">03</div>
 
+          <div class="step-icon">💬</div>
 
-                    <div class="recognition-line"></div>
+          <h3>Connect</h3>
 
+          <p>
+            Detected gestures can become text,
+            speech and accessible communication.
+          </p>
 
-                    <div class="recognition-text">
+        </article>
 
-                        <span>
-                            DETECTED SIGN
-                        </span>
+      </div>
 
-                        <strong>
-                            HELLO
-                        </strong>
+    </section>
 
-                    </div>
 
-                </div>
+    <!-- ================= FEATURES ================= -->
 
+    <section id="features" class="section features-section">
 
-                <div class="floating-card card-top">
+      <div class="section-heading">
 
-                    <span>01</span>
-                    SIGN
+        <div class="eyebrow">
+          THE BRIDGE
+        </div>
 
-                </div>
+        <h2>
+          More than
+          <em>just signs.</em>
+        </h2>
 
+        <p>
+          SignBridge brings different communication
+          methods together in one simple interface.
+        </p>
 
-                <div class="floating-card card-bottom">
+      </div>
 
-                    <span>02</span>
-                    CONNECT
 
-                </div>
+      <div class="feature-grid">
 
-            </div>
+        <article class="feature-card large">
 
-        </section>
+          <div class="feature-icon">🖐</div>
 
+          <h3>Live Sign Detection</h3>
 
+          <p>
+            Open your camera and track hand
+            landmarks in real time.
+          </p>
 
-        <!-- =================================================
-             MARQUEE
-        ================================================== -->
+          <button
+            class="text-button"
+            id="featureCameraBtn"
+          >
+            Open camera →
+          </button>
 
-        <section class="marquee">
+        </article>
 
-            <div class="marquee-track">
 
-                <span>SIGN → TEXT</span>
+        <article class="feature-card">
 
-                <span>TEXT → VOICE</span>
+          <div class="feature-icon">🔊</div>
 
-                <span>VOICE → TEXT</span>
+          <h3>Text to Voice</h3>
 
-                <span>ACCESSIBILITY</span>
+          <p>
+            Convert written communication
+            into spoken words.
+          </p>
 
-                <span>SIGN → TEXT</span>
+        </article>
 
-                <span>TEXT → VOICE</span>
 
-                <span>VOICE → TEXT</span>
+        <article class="feature-card">
 
-                <span>ACCESSIBILITY</span>
+          <div class="feature-icon">🎙️</div>
 
-            </div>
+          <h3>Voice to Text</h3>
 
-        </section>
+          <p>
+            Speak naturally and convert
+            your voice into text.
+          </p>
 
+        </article>
 
 
-        <!-- =================================================
-             TRANSLATOR
-        ================================================== -->
+        <article class="feature-card">
 
-        <section
-            class="translator-section"
-            id="translator"
-        >
+          <div class="feature-icon">🤝</div>
 
+          <h3>Conversation Mode</h3>
 
-            <div class="section-heading">
+          <p>
+            A future two-way communication
+            experience for everyone.
+          </p>
 
-                <p class="eyebrow">
-                    ✦ THE BRIDGE
-                </p>
+        </article>
 
+      </div>
 
-                <h2>
+    </section>
 
-                    One conversation.<br>
 
-                    <span>
-                        Two worlds.
-                    </span>
+    <!-- ================= DEMO ================= -->
 
-                </h2>
+    <section id="demo" class="demo-section">
 
+      <div class="demo-wrapper">
 
-                <p>
+        <div class="demo-copy">
 
-                    Choose how you want to communicate.
-                    SignBridge is being built to translate
-                    between sign language, text and voice.
+          <div class="eyebrow">
+            TRY IT YOURSELF
+          </div>
 
-                </p>
+          <h2>
+            Your voice.
+            <br>
+            <em>Your signs.</em>
+          </h2>
 
-            </div>
+          <p>
+            Try the communication tools below.
+            Camera access is processed directly
+            in your browser.
+          </p>
 
+          <button
+            class="primary-button"
+            id="openCameraBtn"
+          >
+            🖐 Open Camera
+          </button>
 
+        </div>
 
-            <div class="mode-grid">
 
+        <div class="communication-box">
 
-                <!-- =================================================
-                     SIGN → TEXT
-                ================================================== -->
+          <div class="input-label">
+            TYPE SOMETHING
+          </div>
 
-                <div class="mode-card">
+          <textarea
+            id="textInput"
+            placeholder="Type something here..."
+          ></textarea>
 
-                    <div class="mode-number">
-                        01
-                    </div>
+          <div class="communication-buttons">
 
-
-                    <div class="mode-icon">
-                        ✋
-                    </div>
-
-
-                    <h3>
-                        Sign → Text
-                    </h3>
-
-
-                    <p>
-
-                        Use your camera to perform a sign
-                        and convert recognised hand gestures
-                        into readable text.
-
-                    </p>
-
-
-                    <button
-                        class="mode-button"
-                        id="openCameraButton"
-                        type="button"
-                    >
-
-                        Open Camera
-
-                        <span>
-                            ↗
-                        </span>
-
-                    </button>
-
-                </div>
-
-
-
-                <!-- =================================================
-                     TEXT → VOICE
-                ================================================== -->
-
-                <div class="mode-card featured">
-
-                    <div class="mode-number">
-                        02
-                    </div>
-
-
-                    <div class="mode-icon">
-                        🔊
-                    </div>
-
-
-                    <h3>
-                        Text → Voice
-                    </h3>
-
-
-                    <p>
-
-                        Type a message and let your device
-                        speak it aloud, making communication
-                        easier for everyone.
-
-                    </p>
-
-
-                    <button
-                        class="mode-button"
-                        id="textVoiceButton"
-                        type="button"
-                    >
-
-                        Start Speaking
-
-                        <span>
-                            ↗
-                        </span>
-
-                    </button>
-
-                </div>
-
-
-
-                <!-- =================================================
-                     VOICE → TEXT
-                ================================================== -->
-
-                <div class="mode-card">
-
-                    <div class="mode-number">
-                        03
-                    </div>
-
-
-                    <div class="mode-icon">
-                        🎙️
-                    </div>
-
-
-                    <h3>
-                        Voice → Text
-                    </h3>
-
-
-                    <p>
-
-                        Convert spoken communication into
-                        text so it can be read instantly
-                        on screen.
-
-                    </p>
-
-
-                    <button
-                        class="mode-button"
-                        id="voiceTextButton"
-                        type="button"
-                    >
-
-                        Use Microphone
-
-                        <span>
-                            ↗
-                        </span>
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             ABOUT
-        ================================================== -->
-
-        <section
-            class="about-section"
-            id="about"
-        >
-
-
-            <div class="about-number">
-                03
-            </div>
-
-
-            <div class="about-content">
-
-
-                <p class="eyebrow">
-                    ✦ WHY SIGNBRIDGE?
-                </p>
-
-
-                <h2>
-
-                    Technology should<br>
-
-                    <span>
-                        bring people closer.
-                    </span>
-
-                </h2>
-
-
-                <p>
-
-                    Sign languages are complete languages
-                    with their own grammar and structure.
-                    SignBridge explores how modern web
-                    technologies can help make communication
-                    between signing and non-signing people
-                    more accessible.
-
-                </p>
-
-
-                <div class="about-points">
-
-
-                    <div>
-
-                        <strong>
-                            01
-                        </strong>
-
-                        <span>
-                            Accessible by design
-                        </span>
-
-                    </div>
-
-
-                    <div>
-
-                        <strong>
-                            02
-                        </strong>
-
-                        <span>
-                            Built for real communication
-                        </span>
-
-                    </div>
-
-
-                    <div>
-
-                        <strong>
-                            03
-                        </strong>
-
-                        <span>
-                            Focused on meaningful technology
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             FINAL CTA
-        ================================================== -->
-
-        <section class="cta-section">
-
-
-            <p class="eyebrow">
-                ✦ THE FUTURE OF CONNECTION
-            </p>
-
-
-            <h2>
-
-                Communication<br>
-
-                belongs to
-                <span>everyone.</span>
-
-            </h2>
-
-
-            <a
-                href="#translator"
-                class="primary-btn"
+            <button
+              class="tool-button"
+              id="textToVoiceBtn"
             >
+              🔊 Text → Voice
+            </button>
 
-                Enter SignBridge
+            <button
+              class="tool-button"
+              id="voiceToTextBtn"
+            >
+              🎙 Voice → Text
+            </button>
 
-                <span>
-                    ↗
-                </span>
+          </div>
 
-            </a>
+        </div>
 
-        </section>
+      </div>
 
-
-    </main>
+    </section>
 
 
-
-    <!-- =================================================
-         FOOTER
-    ================================================== -->
+    <!-- ================= FOOTER ================= -->
 
     <footer>
 
+      <div class="footer-logo">
+        Sign<span>Bridge</span>
+      </div>
 
-        <div class="footer-logo">
-            SIGNBRIDGE
-        </div>
+      <p>
+        Different ways to speak.
+        One way to connect.
+      </p>
 
+      <div class="footer-line"></div>
 
-        <p>
-            Different ways to speak. One way to connect.
-        </p>
-
-
-        <span>
-            © 2026 SignBridge
-        </span>
-
+      <small>
+        Built with HTML, CSS, JavaScript & MediaPipe
+      </small>
 
     </footer>
 
+  </main>
 
 
-    <!-- =================================================
-         JAVASCRIPT
-         
-         IMPORTANT:
-         MediaPipe is imported dynamically from script.js.
-         Do NOT add another MediaPipe script here.
-    ================================================== -->
+  <!-- ======================================================
+       MEDIAPIPE
+       ====================================================== -->
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 
-<script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+  <script src="script.js"></script>
 
 </body>
-
 </html>
