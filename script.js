@@ -1,1135 +1,834 @@
-/* =====================================================
-   SIGNBRIDGE
-   Camera + Real-Time Hand Landmark Detection
-===================================================== */
+// ============================================================
+// SIGNBRIDGE — MAIN SCRIPT
+// MediaPipe Hands + Camera + Drawing
+// ============================================================
 
-import {
-    FilesetResolver,
-    HandLandmarker,
-    DrawingUtils
-} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs";
+document.addEventListener("DOMContentLoaded", () => {
 
+    // ------------------------------------------------------------
+    // ELEMENTS
+    // ------------------------------------------------------------
 
-/* =====================================================
-   GLOBALS
-===================================================== */
+    const openCameraButton = document.getElementById("openCameraButton");
+    const textVoiceButton = document.getElementById("textVoiceButton");
+    const voiceTextButton = document.getElementById("voiceTextButton");
 
-let cameraStream = null;
-let handLandmarker = null;
-let drawingUtils = null;
+    // ------------------------------------------------------------
+    // CAMERA MODAL
+    // ------------------------------------------------------------
 
-let cameraRunning = false;
-let animationFrame = null;
+    let cameraModal = null;
+    let videoElement = null;
+    let canvasElement = null;
+    let canvasCtx = null;
 
-let lastTimestamp = 0;
+    let camera = null;
+    let hands = null;
 
-
-/* =====================================================
-   MODEL
-===================================================== */
-
-async function createHandLandmarker() {
-
-    updateDetectionText("Loading hand tracking...");
-    updateTrackingHint("Preparing the hand detection model...");
-
-    try {
-
-        const vision =
-            await FilesetResolver.forVisionTasks(
-                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
-            );
+    let cameraRunning = false;
+    let handsReady = false;
 
 
-        handLandmarker =
-            await HandLandmarker.createFromOptions(
-                vision,
-                {
-                    baseOptions: {
-                        modelAssetPath:
-                            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+    // ------------------------------------------------------------
+    // CREATE CAMERA MODAL
+    // ------------------------------------------------------------
 
-                        delegate: "CPU"
-                    },
+    function createCameraModal() {
 
-                    runningMode: "VIDEO",
-
-                    numHands: 2,
-
-                    minHandDetectionConfidence: 0.3,
-
-                    minHandPresenceConfidence: 0.3,
-
-                    minTrackingConfidence: 0.3
-                }
-            );
-
-
-        console.log(
-            "SIGNBRIDGE: Hand Landmarker loaded successfully."
-        );
-
-        return true;
-
-    } catch (error) {
-
-        console.error(
-            "SIGNBRIDGE: Hand Landmarker failed:",
-            error
-        );
-
-        updateDetectionText(
-            "Hand tracking failed"
-        );
-
-        updateTrackingHint(
-            "The camera is working, but the detection model could not start."
-        );
-
-        return false;
-    }
-}
-
-
-/* =====================================================
-   OPEN CAMERA
-===================================================== */
-
-async function openCamera() {
-
-    if (cameraRunning) {
-        return;
-    }
-
-
-    try {
-
-        /* ---------------------------------------------
-           CAMERA PERMISSION
-        --------------------------------------------- */
-
-        cameraStream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video: {
-                    facingMode: "user",
-
-                    width: {
-                        ideal: 1280
-                    },
-
-                    height: {
-                        ideal: 720
-                    }
-                },
-
-                audio: false
-
-            });
-
-
-        cameraRunning = true;
-
-
-        /* ---------------------------------------------
-           CREATE CAMERA UI
-        --------------------------------------------- */
-
-        createCameraInterface();
-
-
-        const video =
-            document.getElementById(
-                "cameraVideo"
-            );
-
-
-        video.srcObject =
-            cameraStream;
-
-
-        await video.play();
-
-
-        /* ---------------------------------------------
-           LOAD MODEL
-        --------------------------------------------- */
-
-        const loaded =
-            await createHandLandmarker();
-
-
-        if (!loaded) {
+        if (document.getElementById("signbridgeCameraModal")) {
             return;
         }
 
+        cameraModal = document.createElement("div");
 
-        /* ---------------------------------------------
-           CANVAS
-        --------------------------------------------- */
+        cameraModal.id = "signbridgeCameraModal";
+        cameraModal.className = "camera-modal";
 
-        const canvas =
-            document.getElementById(
-                "handCanvas"
-            );
+        cameraModal.innerHTML = `
+            <div class="camera-box">
 
+                <button class="camera-close" id="closeCameraButton">
+                    ×
+                </button>
 
-        drawingUtils =
-            new DrawingUtils(
-                canvas.getContext("2d")
-            );
+                <div class="camera-header">
+                    <div>
+                        <span class="camera-eyebrow">
+                            LIVE TRANSLATION
+                        </span>
 
+                        <h2>Show your sign</h2>
+                    </div>
 
-        updateDetectionText(
-            "Show your hand"
-        );
+                    <div class="camera-status">
+                        <span class="status-dot"></span>
+                        CAMERA ACTIVE
+                    </div>
+                </div>
 
-        updateTrackingHint(
-            "Place your hand inside the frame."
-        );
+                <div class="camera-view">
 
+                    <video
+                        id="signbridgeVideo"
+                        autoplay
+                        playsinline
+                        muted>
+                    </video>
 
-        /* ---------------------------------------------
-           START DETECTION
-        --------------------------------------------- */
+                    <canvas id="signbridgeCanvas"></canvas>
 
-        startDetection(
-            video,
-            canvas
-        );
+                    <div class="camera-guide">
+                        <div class="guide-corner top-left"></div>
+                        <div class="guide-corner top-right"></div>
+                        <div class="guide-corner bottom-left"></div>
+                        <div class="guide-corner bottom-right"></div>
 
+                        <span>
+                            Place your hand inside the frame
+                        </span>
+                    </div>
 
-    } catch (error) {
+                    <div class="recognition-result">
+                        <small>HAND TRACKING</small>
 
-        console.error(
-            "SIGNBRIDGE CAMERA ERROR:",
-            error
-        );
-
-
-        cameraRunning = false;
-
-
-        if (cameraStream) {
-
-            cameraStream
-                .getTracks()
-                .forEach(
-                    track => track.stop()
-                );
-
-            cameraStream = null;
-        }
-
-
-        alert(
-            "Camera could not be opened.\n\n" +
-            "Please make sure camera permission is allowed."
-        );
-
-    }
-}
-
-
-/* =====================================================
-   CAMERA UI
-===================================================== */
-
-function createCameraInterface() {
-
-    const oldOverlay =
-        document.getElementById(
-            "cameraOverlay"
-        );
-
-
-    if (oldOverlay) {
-        oldOverlay.remove();
-    }
-
-
-    const overlay =
-        document.createElement("div");
-
-
-    overlay.id =
-        "cameraOverlay";
-
-
-    overlay.innerHTML = `
-
-        <div class="camera-modal">
-
-            <button
-                class="camera-close"
-                id="closeCamera"
-                type="button"
-            >
-                ×
-            </button>
-
-
-            <div class="camera-header">
-
-                <div>
-
-                    <span>
-                        LIVE TRANSLATION
-                    </span>
-
-                    <h2>
-                        Show your sign
-                    </h2>
+                        <strong id="recognitionText">
+                            Starting...
+                        </strong>
+                    </div>
 
                 </div>
 
+                <div class="camera-footer">
 
-                <div class="live-indicator">
+                    <div>
+                        <span class="footer-label">
+                            DETECTION
+                        </span>
 
-                    <span></span>
+                        <span id="handCount">
+                            Initializing...
+                        </span>
+                    </div>
 
-                    LIVE
+                    <div>
+                        <span class="footer-label">
+                            STATUS
+                        </span>
+
+                        <span id="trackingStatus">
+                            Loading...
+                        </span>
+                    </div>
 
                 </div>
 
             </div>
+        `;
 
+        document.body.appendChild(cameraModal);
 
-            <div class="camera-view">
+        videoElement =
+            document.getElementById("signbridgeVideo");
 
-                <video
-                    id="cameraVideo"
-                    autoplay
-                    playsinline
-                    muted
-                ></video>
+        canvasElement =
+            document.getElementById("signbridgeCanvas");
 
+        canvasCtx =
+            canvasElement.getContext("2d");
 
-                <canvas
-                    id="handCanvas"
-                ></canvas>
+        document
+            .getElementById("closeCameraButton")
+            .addEventListener("click", closeCamera);
 
+        // Close when clicking outside camera box
+        cameraModal.addEventListener("click", (event) => {
 
-                <div class="camera-guide">
-
-                    <div
-                        class="guide-corner top-left"
-                    ></div>
-
-                    <div
-                        class="guide-corner top-right"
-                    ></div>
-
-                    <div
-                        class="guide-corner bottom-left"
-                    ></div>
-
-                    <div
-                        class="guide-corner bottom-right"
-                    ></div>
-
-
-                    <p>
-                        Place your hand inside the frame
-                    </p>
-
-                </div>
-
-
-                <div class="camera-status">
-
-                    <span></span>
-
-                    CAMERA ACTIVE
-
-                </div>
-
-            </div>
-
-
-            <div class="recognition-result">
-
-                <div class="result-label">
-                    HAND TRACKING
-                </div>
-
-
-                <div id="detectedSign">
-                    Starting...
-                </div>
-
-
-                <div
-                    class="result-hint"
-                    id="trackingHint"
-                >
-                    Initialising camera...
-                </div>
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    document.body.appendChild(
-        overlay
-    );
-
-
-    document
-        .getElementById(
-            "closeCamera"
-        )
-        .addEventListener(
-            "click",
-            closeCamera
-        );
-
-
-    overlay.addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target === overlay
-            ) {
-
+            if (event.target === cameraModal) {
                 closeCamera();
-
             }
 
-        }
-    );
-}
+        });
 
-
-/* =====================================================
-   START DETECTION
-===================================================== */
-
-function startDetection(
-    video,
-    canvas
-) {
-
-    if (
-        !handLandmarker ||
-        !video ||
-        !canvas
-    ) {
-
-        return;
     }
 
 
-    const context =
-        canvas.getContext("2d");
+    // ------------------------------------------------------------
+    // UPDATE STATUS
+    // ------------------------------------------------------------
 
+    function updateStatus(message) {
 
-    function detect() {
+        const recognitionText =
+            document.getElementById("recognitionText");
 
-        if (!cameraRunning) {
-            return;
+        const handCount =
+            document.getElementById("handCount");
+
+        const trackingStatus =
+            document.getElementById("trackingStatus");
+
+        if (recognitionText) {
+            recognitionText.textContent = message;
         }
 
-
-        /* ---------------------------------------------
-           MAKE CANVAS SAME SIZE AS VIDEO
-        --------------------------------------------- */
-
-        if (
-            video.videoWidth > 0 &&
-            video.videoHeight > 0
-        ) {
-
-            if (
-                canvas.width !==
-                video.videoWidth
-            ) {
-
-                canvas.width =
-                    video.videoWidth;
-            }
-
-
-            if (
-                canvas.height !==
-                video.videoHeight
-            ) {
-
-                canvas.height =
-                    video.videoHeight;
-            }
-
+        if (trackingStatus) {
+            trackingStatus.textContent = message;
         }
 
-
-        /* ---------------------------------------------
-           CLEAR OLD LANDMARKS
-        --------------------------------------------- */
-
-        context.clearRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
-
-
-        /* ---------------------------------------------
-           DETECT HAND
-        --------------------------------------------- */
-
-        if (
-            video.readyState >=
-            HTMLMediaElement.HAVE_CURRENT_DATA
-        ) {
-
-            try {
-
-                /*
-                 * MediaPipe requires an increasing
-                 * timestamp for VIDEO mode.
-                 */
-
-                const now =
-                    Date.now();
-
-
-                lastTimestamp =
-                    Math.max(
-                        now,
-                        lastTimestamp + 1
-                    );
-
-
-                const result =
-                    handLandmarker.detectForVideo(
-                        video,
-                        lastTimestamp
-                    );
-
-
-                drawResults(
-                    result,
-                    canvas,
-                    context
-                );
-
-
-                updateResultText(
-                    result
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "Detection error:",
-                    error
-                );
-
-            }
-
-        }
-
-
-        animationFrame =
-            requestAnimationFrame(
-                detect
-            );
     }
 
 
-    detect();
-}
+    // ------------------------------------------------------------
+    // OPEN CAMERA
+    // ------------------------------------------------------------
 
+    async function openCamera() {
 
-/* =====================================================
-   DRAW HAND LANDMARKS
-===================================================== */
+        createCameraModal();
 
-function drawResults(
-    result,
-    canvas,
-    context
-) {
+        cameraModal.classList.add("active");
 
-    if (
-        !result ||
-        !result.landmarks ||
-        result.landmarks.length === 0
-    ) {
-
-        return;
-    }
-
-
-    for (
-        const landmarks
-        of result.landmarks
-    ) {
-
-        /*
-         * Draw the official MediaPipe
-         * hand connections.
-         */
-
-        drawingUtils.drawConnectors(
-            landmarks,
-            HandLandmarker.HAND_CONNECTIONS,
-            {
-                color: "#e47b67",
-                lineWidth: 5
-            }
-        );
-
-
-        /*
-         * Draw landmark points.
-         */
-
-        drawingUtils.drawLandmarks(
-            landmarks,
-            {
-                color: "#7655a8",
-                lineWidth: 2,
-                radius: 5
-            }
-        );
-
-    }
-}
-
-
-/* =====================================================
-   RESULT TEXT
-===================================================== */
-
-function updateResultText(
-    result
-) {
-
-    const hands =
-        result &&
-        result.landmarks
-            ? result.landmarks.length
-            : 0;
-
-
-    if (hands === 0) {
-
-        updateDetectionText(
-            "No hand detected"
-        );
-
-        updateTrackingHint(
-            "Move your hand inside the frame."
-        );
-
-        return;
-    }
-
-
-    if (hands === 1) {
-
-        updateDetectionText(
-            "Hand detected ✓"
-        );
-
-        updateTrackingHint(
-            "21 hand landmarks are being tracked."
-        );
-
-        return;
-    }
-
-
-    updateDetectionText(
-        `${hands} hands detected ✓`
-    );
-
-
-    updateTrackingHint(
-        "Both hands are being tracked."
-    );
-}
-
-
-/* =====================================================
-   TEXT HELPERS
-===================================================== */
-
-function updateDetectionText(
-    text
-) {
-
-    const element =
-        document.getElementById(
-            "detectedSign"
-        );
-
-
-    if (element) {
-
-        element.textContent =
-            text;
-
-    }
-}
-
-
-function updateTrackingHint(
-    text
-) {
-
-    const element =
-        document.getElementById(
-            "trackingHint"
-        );
-
-
-    if (element) {
-
-        element.textContent =
-            text;
-
-    }
-}
-
-
-/* =====================================================
-   CLOSE CAMERA
-===================================================== */
-
-function closeCamera() {
-
-    cameraRunning = false;
-
-
-    if (animationFrame) {
-
-        cancelAnimationFrame(
-            animationFrame
-        );
-
-        animationFrame = null;
-    }
-
-
-    if (cameraStream) {
-
-        cameraStream
-            .getTracks()
-            .forEach(
-                track => track.stop()
-            );
-
-        cameraStream = null;
-    }
-
-
-    if (handLandmarker) {
+        updateStatus("Loading hand tracking...");
 
         try {
-            handLandmarker.close();
+
+            // ----------------------------------------------------
+            // CHECK BROWSER SUPPORT
+            // ----------------------------------------------------
+
+            if (!navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia) {
+
+                throw new Error(
+                    "Camera API is not supported in this browser."
+                );
+
+            }
+
+
+            // ----------------------------------------------------
+            // INITIALIZE MEDIAPIPE HANDS
+            // ----------------------------------------------------
+
+            if (!hands) {
+
+                hands = new Hands({
+
+                    locateFile: (file) => {
+
+                        return (
+                            "https://cdn.jsdelivr.net/npm/" +
+                            "@mediapipe/hands/" +
+                            file
+                        );
+
+                    }
+
+                });
+
+
+                hands.setOptions({
+
+                    maxNumHands: 2,
+
+                    modelComplexity: 1,
+
+                    minDetectionConfidence: 0.5,
+
+                    minTrackingConfidence: 0.5
+
+                });
+
+
+                hands.onResults(onHandResults);
+
+                handsReady = true;
+
+            }
+
+
+            // ----------------------------------------------------
+            // START CAMERA
+            // ----------------------------------------------------
+
+            if (!camera) {
+
+                camera = new Camera(videoElement, {
+
+                    onFrame: async () => {
+
+                        if (!cameraRunning) {
+                            return;
+                        }
+
+                        try {
+
+                            await hands.send({
+                                image: videoElement
+                            });
+
+                        } catch (error) {
+
+                            console.error(
+                                "MediaPipe frame error:",
+                                error
+                            );
+
+                        }
+
+                    },
+
+                    width: 1280,
+
+                    height: 720
+
+                });
+
+            }
+
+
+            cameraRunning = true;
+
+            camera.start();
+
+            updateStatus("Show your hand");
+
         } catch (error) {
-            console.log(error);
-        }
-
-        handLandmarker = null;
-    }
-
-
-    drawingUtils = null;
-
-    lastTimestamp = 0;
-
-
-    const overlay =
-        document.getElementById(
-            "cameraOverlay"
-        );
-
-
-    if (overlay) {
-
-        overlay.remove();
-
-    }
-}
-
-
-/* =====================================================
-   BUTTONS
-===================================================== */
-
-document.addEventListener(
-    "click",
-    event => {
-
-        const button =
-            event.target.closest(
-                ".mode-button"
-            );
-
-
-        if (!button) {
-            return;
-        }
-
-
-        const card =
-            button.closest(
-                ".mode-card"
-            );
-
-
-        if (!card) {
-            return;
-        }
-
-
-        const title =
-            card.querySelector("h3");
-
-
-        if (!title) {
-            return;
-        }
-
-
-        const mode =
-            title.textContent.trim();
-
-
-        /* ---------------------------------------------
-           SIGN → TEXT
-        --------------------------------------------- */
-
-        if (
-            mode === "Sign → Text"
-        ) {
-
-            openCamera();
-
-            return;
-        }
-
-
-        /* ---------------------------------------------
-           TEXT → VOICE
-        --------------------------------------------- */
-
-        if (
-            mode === "Text → Voice"
-        ) {
-
-            textToVoice();
-
-            return;
-        }
-
-
-        /* ---------------------------------------------
-           VOICE → TEXT
-        --------------------------------------------- */
-
-        if (
-            mode === "Voice → Text"
-        ) {
-
-            voiceToText();
-
-            return;
-        }
-
-    }
-);
-
-
-/* =====================================================
-   TEXT → VOICE
-===================================================== */
-
-function textToVoice() {
-
-    const text =
-        prompt(
-            "Type something for SignBridge to speak:"
-        );
-
-
-    if (
-        !text ||
-        text.trim() === ""
-    ) {
-
-        return;
-    }
-
-
-    if (
-        !("speechSynthesis" in window)
-    ) {
-
-        alert(
-            "Text-to-speech is not supported in this browser."
-        );
-
-        return;
-    }
-
-
-    const speech =
-        new SpeechSynthesisUtterance(
-            text
-        );
-
-
-    speech.lang =
-        "en-IN";
-
-
-    speech.rate =
-        0.95;
-
-
-    window.speechSynthesis.speak(
-        speech
-    );
-}
-
-
-/* =====================================================
-   VOICE → TEXT
-===================================================== */
-
-function voiceToText() {
-
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-
-    if (!SpeechRecognition) {
-
-        alert(
-            "Voice recognition is not supported in this browser."
-        );
-
-        return;
-    }
-
-
-    const recognition =
-        new SpeechRecognition();
-
-
-    recognition.lang =
-        "en-IN";
-
-
-    recognition.interimResults =
-        false;
-
-
-    recognition.continuous =
-        false;
-
-
-    recognition.onstart =
-        () => {
-
-            alert(
-                "Listening... Speak now."
-            );
-
-        };
-
-
-    recognition.onresult =
-        event => {
-
-            const text =
-                event
-                    .results[0][0]
-                    .transcript;
-
-
-            alert(
-                "You said:\n\n" +
-                text
-            );
-
-        };
-
-
-    recognition.onerror =
-        error => {
 
             console.error(
-                "Speech recognition error:",
+                "SignBridge camera error:",
                 error
             );
 
-            alert(
-                "Could not understand the voice."
-            );
+            updateStatus("Camera / tracking failed");
 
-        };
+            const handCount =
+                document.getElementById("handCount");
 
+            if (handCount) {
 
-    recognition.start();
-}
+                handCount.textContent =
+                    "Check browser permissions";
 
+            }
 
-/* =====================================================
-   SCROLL REVEAL
-===================================================== */
-
-const revealElements =
-    document.querySelectorAll(
-        ".mode-card, .about-section, .cta-section"
-    );
-
-
-const revealObserver =
-    new IntersectionObserver(
-        entries => {
-
-            entries.forEach(
-                entry => {
-
-                    if (
-                        entry.isIntersecting
-                    ) {
-
-                        entry.target
-                            .classList
-                            .add("visible");
-
-
-                        revealObserver
-                            .unobserve(
-                                entry.target
-                            );
-
-                    }
-
-                }
-            );
-
-        },
-        {
-            threshold: 0.12
         }
-    );
-
-
-revealElements.forEach(
-    element => {
-
-        element.classList.add(
-            "reveal"
-        );
-
-
-        revealObserver.observe(
-            element
-        );
 
     }
-);
 
 
-/* =====================================================
-   NAVBAR
-===================================================== */
+    // ------------------------------------------------------------
+    // MEDIAPIPE RESULTS
+    // ------------------------------------------------------------
 
-const navbar =
-    document.querySelector(
-        ".navbar"
-    );
+    function onHandResults(results) {
 
-
-window.addEventListener(
-    "scroll",
-    () => {
-
-        if (!navbar) {
+        if (!canvasElement || !canvasCtx) {
             return;
         }
 
 
+        // --------------------------------------------------------
+        // MAKE CANVAS SAME SIZE AS VIDEO
+        // --------------------------------------------------------
+
+        const width =
+            videoElement.videoWidth || 1280;
+
+        const height =
+            videoElement.videoHeight || 720;
+
+
         if (
-            window.scrollY > 30
+            canvasElement.width !== width ||
+            canvasElement.height !== height
         ) {
 
-            navbar.style.background =
-                "rgba(247,240,231,0.88)";
+            canvasElement.width = width;
 
-            navbar.style.backdropFilter =
-                "blur(14px)";
+            canvasElement.height = height;
+
+        }
+
+
+        // --------------------------------------------------------
+        // CLEAR
+        // --------------------------------------------------------
+
+        canvasCtx.save();
+
+        canvasCtx.clearRect(
+            0,
+            0,
+            canvasElement.width,
+            canvasElement.height
+        );
+
+
+        // --------------------------------------------------------
+        // DRAW HAND LANDMARKS
+        // --------------------------------------------------------
+
+        if (
+            results.multiHandLandmarks &&
+            results.multiHandLandmarks.length > 0
+        ) {
+
+            const count =
+                results.multiHandLandmarks.length;
+
+
+            // Status
+            const handCount =
+                document.getElementById("handCount");
+
+            const recognitionText =
+                document.getElementById("recognitionText");
+
+            const trackingStatus =
+                document.getElementById("trackingStatus");
+
+
+            if (handCount) {
+
+                handCount.textContent =
+                    count === 1
+                        ? "1 hand detected"
+                        : `${count} hands detected`;
+
+            }
+
+
+            if (recognitionText) {
+
+                recognitionText.textContent =
+                    count === 1
+                        ? "HAND DETECTED ✓"
+                        : `${count} HANDS DETECTED ✓`;
+
+            }
+
+
+            if (trackingStatus) {
+
+                trackingStatus.textContent =
+                    "Tracking active";
+
+            }
+
+
+            // Draw every detected hand
+            for (
+                const landmarks
+                of results.multiHandLandmarks
+            ) {
+
+                // Connecting skeleton
+                drawConnectors(
+                    canvasCtx,
+                    landmarks,
+                    HAND_CONNECTIONS,
+                    {
+                        color: "#e47b67",
+                        lineWidth: 5
+                    }
+                );
+
+
+                // Landmark dots
+                drawLandmarks(
+                    canvasCtx,
+                    landmarks,
+                    {
+                        color: "#7655a8",
+                        lineWidth: 2,
+                        radius: 6
+                    }
+                );
+
+            }
 
         } else {
 
-            navbar.style.background =
-                "";
+            // ----------------------------------------------------
+            // NO HAND
+            // ----------------------------------------------------
 
-            navbar.style.backdropFilter =
-                "";
+            const handCount =
+                document.getElementById("handCount");
+
+            const recognitionText =
+                document.getElementById("recognitionText");
+
+            const trackingStatus =
+                document.getElementById("trackingStatus");
+
+
+            if (handCount) {
+                handCount.textContent = "No hand detected";
+            }
+
+            if (recognitionText) {
+                recognitionText.textContent =
+                    "SHOW YOUR HAND";
+            }
+
+            if (trackingStatus) {
+                trackingStatus.textContent =
+                    "Waiting for hand";
+            }
+
+        }
+
+
+        canvasCtx.restore();
+
+    }
+
+
+    // ------------------------------------------------------------
+    // CLOSE CAMERA
+    // ------------------------------------------------------------
+
+    function closeCamera() {
+
+        cameraRunning = false;
+
+        if (videoElement) {
+
+            const stream =
+                videoElement.srcObject;
+
+            if (stream) {
+
+                stream
+                    .getTracks()
+                    .forEach(track => track.stop());
+
+            }
+
+            videoElement.srcObject = null;
+
+        }
+
+
+        if (cameraModal) {
+
+            cameraModal.classList.remove("active");
+
+        }
+
+        if (canvasCtx && canvasElement) {
+
+            canvasCtx.clearRect(
+                0,
+                0,
+                canvasElement.width,
+                canvasElement.height
+            );
 
         }
 
     }
-);
 
 
-/* =====================================================
-   CURSOR GLOW
-===================================================== */
+    // ------------------------------------------------------------
+    // OPEN CAMERA BUTTON
+    // ------------------------------------------------------------
 
-const cursorGlow =
-    document.createElement(
-        "div"
+    if (openCameraButton) {
+
+        openCameraButton.addEventListener(
+            "click",
+            openCamera
+        );
+
+    }
+
+
+    // ------------------------------------------------------------
+    // ESC KEY CLOSE
+    // ------------------------------------------------------------
+
+    document.addEventListener("keydown", (event) => {
+
+        if (event.key === "Escape") {
+
+            closeCamera();
+
+        }
+
+    });
+
+
+    // ============================================================
+    // TEXT → VOICE
+    // ============================================================
+
+    if (textVoiceButton) {
+
+        textVoiceButton.addEventListener(
+            "click",
+            () => {
+
+                const text =
+                    prompt(
+                        "Enter something you want SignBridge to speak:"
+                    );
+
+
+                if (!text) {
+                    return;
+                }
+
+
+                if (!("speechSynthesis" in window)) {
+
+                    alert(
+                        "Text-to-speech is not supported in this browser."
+                    );
+
+                    return;
+
+                }
+
+
+                window.speechSynthesis.cancel();
+
+
+                const speech =
+                    new SpeechSynthesisUtterance(text);
+
+
+                speech.lang = "en-US";
+
+                speech.rate = 0.95;
+
+                speech.pitch = 1;
+
+
+                window.speechSynthesis.speak(
+                    speech
+                );
+
+            }
+        );
+
+    }
+
+
+    // ============================================================
+    // VOICE → TEXT
+    // ============================================================
+
+    if (voiceTextButton) {
+
+        voiceTextButton.addEventListener(
+            "click",
+            () => {
+
+                const SpeechRecognition =
+                    window.SpeechRecognition ||
+                    window.webkitSpeechRecognition;
+
+
+                if (!SpeechRecognition) {
+
+                    alert(
+                        "Voice recognition is not supported in this browser. Please use Google Chrome."
+                    );
+
+                    return;
+
+                }
+
+
+                const recognition =
+                    new SpeechRecognition();
+
+
+                recognition.lang =
+                    "en-US";
+
+                recognition.continuous =
+                    false;
+
+                recognition.interimResults =
+                    false;
+
+
+                recognition.onstart = () => {
+
+                    voiceTextButton.textContent =
+                        "Listening...";
+
+                };
+
+
+                recognition.onresult =
+                    (event) => {
+
+                        const transcript =
+                            event
+                                .results[0][0]
+                                .transcript;
+
+
+                        alert(
+                            "You said:\n\n" +
+                            transcript
+                        );
+
+                    };
+
+
+                recognition.onerror =
+                    (event) => {
+
+                        console.error(
+                            "Speech recognition error:",
+                            event.error
+                        );
+
+                    };
+
+
+                recognition.onend = () => {
+
+                    voiceTextButton.textContent =
+                        "Use Microphone";
+
+                };
+
+
+                recognition.start();
+
+            }
+        );
+
+    }
+
+
+    // ============================================================
+    // NAVBAR SCROLL
+    // ============================================================
+
+    const navbar =
+        document.querySelector(".navbar");
+
+    window.addEventListener(
+        "scroll",
+        () => {
+
+            if (!navbar) {
+                return;
+            }
+
+            if (window.scrollY > 40) {
+
+                navbar.classList.add(
+                    "scrolled"
+                );
+
+            } else {
+
+                navbar.classList.remove(
+                    "scrolled"
+                );
+
+            }
+
+        }
     );
 
 
-cursorGlow.className =
-    "cursor-glow";
+    // ============================================================
+    // REVEAL ANIMATION
+    // ============================================================
+
+    const revealElements =
+        document.querySelectorAll(".reveal");
 
 
-document.body.appendChild(
-    cursorGlow
-);
+    if ("IntersectionObserver" in window) {
+
+        const observer =
+            new IntersectionObserver(
+                (entries) => {
+
+                    entries.forEach(
+                        (entry) => {
+
+                            if (
+                                entry.isIntersecting
+                            ) {
+
+                                entry.target.classList.add(
+                                    "visible"
+                                );
+
+                            }
+
+                        }
+                    );
+
+                },
+                {
+                    threshold: 0.12
+                }
+            );
 
 
-document.addEventListener(
-    "mousemove",
-    event => {
+        revealElements.forEach(
+            element => observer.observe(element)
+        );
 
-        cursorGlow.style.left =
-            `${event.clientX}px`;
+    } else {
 
-        cursorGlow.style.top =
-            `${event.clientY}px`;
+        revealElements.forEach(
+            element =>
+                element.classList.add("visible")
+        );
 
     }
-);
 
 
-/* =====================================================
-   CONSOLE
-===================================================== */
+    // ============================================================
+    // CURSOR GLOW
+    // ============================================================
 
-console.log(
-    "%cSIGNBRIDGE",
-    "font-size:24px;font-weight:bold;color:#7655a8;"
-);
+    const cursorGlow =
+        document.createElement("div");
 
-console.log(
-    "Accessibility project initialized."
-);
+    cursorGlow.className =
+        "cursor-glow";
+
+    document.body.appendChild(
+        cursorGlow
+    );
+
+
+    document.addEventListener(
+        "mousemove",
+        (event) => {
+
+            cursorGlow.style.left =
+                `${event.clientX}px`;
+
+            cursorGlow.style.top =
+                `${event.clientY}px`;
+
+        }
+    );
+
+
+    // ============================================================
+    // INITIAL MESSAGE
+    // ============================================================
+
+    console.log(
+        "%cSignBridge initialized ✓",
+        "font-size:16px;font-weight:bold;"
+    );
+
+});
