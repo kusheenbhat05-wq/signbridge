@@ -28,39 +28,33 @@ document.addEventListener("DOMContentLoaded", () => {
      ========================================================= */
 
   let overlay = null;
-
   let video = null;
-
   let canvas = null;
-
   let ctx = null;
 
   let stream = null;
-
   let hands = null;
 
   let running = false;
-
   let processing = false;
-
   let frameId = null;
+
+  let lastGesture = "";
+  let gestureStableCount = 0;
 
 
   /* =========================================================
-     CAMERA MODAL
+     CAMERA UI
      ========================================================= */
 
   function createCamera() {
 
     if (overlay) return;
 
-    overlay =
-      document.createElement("div");
-
+    overlay = document.createElement("div");
     overlay.id = "cameraOverlay";
 
     overlay.innerHTML = `
-
       <div class="camera-modal">
 
         <div class="camera-header">
@@ -79,14 +73,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         </div>
 
-
         <div
           class="camera-status"
           id="cameraStatus"
         >
           Opening camera...
         </div>
-
 
         <div class="camera-view">
 
@@ -100,7 +92,6 @@ document.addEventListener("DOMContentLoaded", () => {
           <canvas
             id="handCanvas"
           ></canvas>
-
 
           <div class="camera-guide">
 
@@ -124,11 +115,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         </div>
 
-
         <div class="recognition-result">
 
           <div class="result-label">
-            DETECTED
+            DETECTED SIGN
           </div>
 
           <div id="detectedSign">
@@ -136,31 +126,24 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
 
           <div class="result-hint">
-            Place your hand inside the frame
+            Hold a gesture steady for recognition
           </div>
 
         </div>
 
       </div>
-
     `;
 
     document.body.appendChild(overlay);
 
-
     video =
-      document.getElementById(
-        "signbridgeVideo"
-      );
+      document.getElementById("signbridgeVideo");
 
     canvas =
-      document.getElementById(
-        "handCanvas"
-      );
+      document.getElementById("handCanvas");
 
     ctx =
       canvas.getContext("2d");
-
 
     document
       .getElementById("closeCamera")
@@ -169,14 +152,11 @@ document.addEventListener("DOMContentLoaded", () => {
         closeCamera
       );
 
-
     overlay.addEventListener(
       "click",
       (event) => {
 
-        if (
-          event.target === overlay
-        ) {
+        if (event.target === overlay) {
           closeCamera();
         }
 
@@ -187,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-     STATUS
+     UI HELPERS
      ========================================================= */
 
   function status(message) {
@@ -219,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-     OPEN CAMERA
+     START CAMERA
      ========================================================= */
 
   async function openCamera() {
@@ -229,9 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
     overlay.classList.add("active");
 
     status("Requesting camera access...");
-
     detected("STARTING...");
-
 
     if (
       !navigator.mediaDevices ||
@@ -247,39 +225,27 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-
     try {
 
       stream =
-        await navigator.mediaDevices
-          .getUserMedia({
-
-            video: {
-              facingMode: "user",
-
-              width: {
-                ideal: 1280
-              },
-
-              height: {
-                ideal: 720
-              }
-
+        await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: {
+              ideal: 1280
             },
-
-            audio: false
-
-          });
-
+            height: {
+              ideal: 720
+            }
+          },
+          audio: false
+        });
 
       video.srcObject = stream;
 
-
       await video.play();
 
-
       running = true;
-
 
       status(
         "Camera ready • Loading hand tracking..."
@@ -287,9 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       detected("LOADING...");
 
-
       await setupHands();
-
 
     } catch (error) {
 
@@ -299,7 +263,6 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       running = false;
-
 
       if (
         error.name ===
@@ -327,10 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       }
 
-
-      detected(
-        "CAMERA ERROR"
-      );
+      detected("CAMERA ERROR");
 
     }
 
@@ -338,19 +298,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-     MEDIAPIPE HANDS
+     MEDIAPIPE
      ========================================================= */
 
   async function setupHands() {
 
     if (
-      typeof Hands ===
-      "undefined"
+      typeof Hands === "undefined"
     ) {
-
-      console.error(
-        "MediaPipe Hands is missing."
-      );
 
       status(
         "MediaPipe failed to load."
@@ -361,9 +316,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       return;
-
     }
-
 
     try {
 
@@ -382,41 +335,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
         });
 
-
       hands.setOptions({
 
-        maxNumHands: 2,
+        maxNumHands: 1,
 
         modelComplexity: 1,
 
-        minDetectionConfidence: 0.5,
+        minDetectionConfidence: 0.55,
 
-        minTrackingConfidence: 0.5
+        minTrackingConfidence: 0.55
 
       });
-
 
       hands.onResults(
         handleResults
       );
 
-
       status(
-        "Hand tracking ready • Show your hand"
+        "Hand tracking ready • Show a gesture"
       );
 
       detected(
         "SHOW YOUR HAND"
       );
 
-
       processFrames();
-
 
     } catch (error) {
 
       console.error(
-        "MediaPipe setup error:",
+        "MediaPipe error:",
         error
       );
 
@@ -434,18 +382,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-     PROCESS CAMERA FRAMES
+     FRAME LOOP
      ========================================================= */
 
   function processFrames() {
 
     if (!running) return;
 
-
     async function loop() {
 
       if (!running) return;
-
 
       if (
         video.readyState >= 2 &&
@@ -453,7 +399,6 @@ document.addEventListener("DOMContentLoaded", () => {
       ) {
 
         processing = true;
-
 
         try {
 
@@ -470,17 +415,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         }
 
-
         processing = false;
 
       }
-
 
       frameId =
         requestAnimationFrame(loop);
 
     }
-
 
     loop();
 
@@ -495,18 +437,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!running) return;
 
-
     const width =
       video.videoWidth || 1280;
 
     const height =
       video.videoHeight || 720;
 
-
     canvas.width = width;
-
     canvas.height = height;
-
 
     ctx.clearRect(
       0,
@@ -515,8 +453,7 @@ document.addEventListener("DOMContentLoaded", () => {
       height
     );
 
-
-    const handsDetected =
+    const detectedHands =
       results.multiHandLandmarks || [];
 
 
@@ -525,11 +462,14 @@ document.addEventListener("DOMContentLoaded", () => {
        ------------------------------------------------------- */
 
     if (
-      handsDetected.length === 0
+      detectedHands.length === 0
     ) {
 
+      lastGesture = "";
+      gestureStableCount = 0;
+
       status(
-        "Hand tracking ready • Show your hand"
+        "Hand tracking ready • Show a gesture"
       );
 
       detected(
@@ -537,80 +477,324 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       return;
+    }
+
+
+    /* -------------------------------------------------------
+       LANDMARKS
+       ------------------------------------------------------- */
+
+    const landmarks =
+      detectedHands[0];
+
+
+    drawHand(landmarks);
+
+
+    /* -------------------------------------------------------
+       RECOGNIZE GESTURE
+       ------------------------------------------------------- */
+
+    const gesture =
+      recognizeGesture(
+        landmarks
+      );
+
+
+    if (!gesture) {
+
+      status(
+        "Hand detected • Try a gesture"
+      );
+
+      detected(
+        "ANALYZING..."
+      );
+
+      return;
+    }
+
+
+    /* -------------------------------------------------------
+       STABILIZE GESTURE
+       ------------------------------------------------------- */
+
+    if (
+      gesture === lastGesture
+    ) {
+
+      gestureStableCount++;
+
+    } else {
+
+      lastGesture = gesture;
+
+      gestureStableCount = 0;
+
+    }
+
+
+    status(
+      "Gesture detected • Hold steady"
+    );
+
+
+    if (
+      gestureStableCount >= 5
+    ) {
+
+      detected(
+        gesture
+      );
+
+    } else {
+
+      detected(
+        "ANALYZING..."
+      );
+
+    }
+
+  }
+
+
+  /* =========================================================
+     DRAW HAND
+     ========================================================= */
+
+  function drawHand(landmarks) {
+
+    if (
+      typeof drawConnectors ===
+        "function" &&
+      typeof HAND_CONNECTIONS !==
+        "undefined"
+    ) {
+
+      drawConnectors(
+        ctx,
+        landmarks,
+        HAND_CONNECTIONS,
+        {
+          color: "#e47b67",
+          lineWidth: 4
+        }
+      );
+
+    }
+
+
+    if (
+      typeof drawLandmarks ===
+      "function"
+    ) {
+
+      drawLandmarks(
+        ctx,
+        landmarks,
+        {
+          color: "#7655a8",
+          lineWidth: 2,
+          radius: 5
+        }
+      );
+
+    }
+
+  }
+
+
+  /* =========================================================
+     LANDMARK HELPERS
+     ========================================================= */
+
+  function distance(a, b) {
+
+    const x =
+      a.x - b.x;
+
+    const y =
+      a.y - b.y;
+
+    const z =
+      (a.z || 0) -
+      (b.z || 0);
+
+    return Math.sqrt(
+      x * x +
+      y * y +
+      z * z
+    );
+
+  }
+
+
+  function fingerExtended(
+    landmarks,
+    tip,
+    pip
+  ) {
+
+    return (
+      distance(
+        landmarks[tip],
+        landmarks[0]
+      ) >
+      distance(
+        landmarks[pip],
+        landmarks[0]
+      ) * 1.08
+    );
+
+  }
+
+
+  function getFingerState(
+    landmarks
+  ) {
+
+    return {
+
+      index: fingerExtended(
+        landmarks,
+        8,
+        6
+      ),
+
+      middle: fingerExtended(
+        landmarks,
+        12,
+        10
+      ),
+
+      ring: fingerExtended(
+        landmarks,
+        16,
+        14
+      ),
+
+      pinky: fingerExtended(
+        landmarks,
+        20,
+        18
+      )
+
+    };
+
+  }
+
+
+  /* =========================================================
+     GESTURE RECOGNITION
+     ========================================================= */
+
+  function recognizeGesture(
+    landmarks
+  ) {
+
+    const fingers =
+      getFingerState(
+        landmarks
+      );
+
+
+    const thumbTip =
+      landmarks[4];
+
+    const indexTip =
+      landmarks[8];
+
+
+    /* -------------------------------------------------------
+       OK
+       Thumb + index close together
+       ------------------------------------------------------- */
+
+    const thumbIndexDistance =
+      distance(
+        thumbTip,
+        indexTip
+      );
+
+
+    if (
+      thumbIndexDistance <
+      0.07 &&
+      fingers.middle &&
+      fingers.ring &&
+      fingers.pinky
+    ) {
+
+      return "OK";
 
     }
 
 
     /* -------------------------------------------------------
-       HAND FOUND
+       OPEN HAND
        ------------------------------------------------------- */
 
-    const count =
-      handsDetected.length;
+    if (
+      fingers.index &&
+      fingers.middle &&
+      fingers.ring &&
+      fingers.pinky
+    ) {
 
+      return "OPEN HAND";
 
-    status(
-      `${count} ${
-        count === 1
-          ? "hand"
-          : "hands"
-      } detected`
-    );
-
-
-    detected(
-      count === 1
-        ? "HAND DETECTED"
-        : `${count} HANDS DETECTED`
-    );
+    }
 
 
     /* -------------------------------------------------------
-       DRAW LANDMARKS
+       PEACE
        ------------------------------------------------------- */
 
-    handsDetected.forEach(
-      (landmarks) => {
+    if (
+      fingers.index &&
+      fingers.middle &&
+      !fingers.ring &&
+      !fingers.pinky
+    ) {
 
-        if (
-          typeof drawConnectors ===
-            "function" &&
-          typeof HAND_CONNECTIONS !==
-            "undefined"
-        ) {
+      return "PEACE";
 
-          drawConnectors(
-            ctx,
-            landmarks,
-            HAND_CONNECTIONS,
-            {
-              color: "#e47b67",
-              lineWidth: 4
-            }
-          );
-
-        }
+    }
 
 
-        if (
-          typeof drawLandmarks ===
-          "function"
-        ) {
+    /* -------------------------------------------------------
+       ONE
+       ------------------------------------------------------- */
 
-          drawLandmarks(
-            ctx,
-            landmarks,
-            {
-              color: "#7655a8",
-              lineWidth: 2,
-              radius: 5
-            }
-          );
+    if (
+      fingers.index &&
+      !fingers.middle &&
+      !fingers.ring &&
+      !fingers.pinky
+    ) {
 
-        }
+      return "ONE";
 
-      }
-    );
+    }
+
+
+    /* -------------------------------------------------------
+       FIST
+       ------------------------------------------------------- */
+
+    if (
+      !fingers.index &&
+      !fingers.middle &&
+      !fingers.ring &&
+      !fingers.pinky
+    ) {
+
+      return "FIST";
+
+    }
+
+
+    return null;
 
   }
 
@@ -624,6 +808,10 @@ document.addEventListener("DOMContentLoaded", () => {
     running = false;
 
     processing = false;
+
+    lastGesture = "";
+
+    gestureStableCount = 0;
 
 
     if (frameId) {
@@ -642,7 +830,7 @@ document.addEventListener("DOMContentLoaded", () => {
       stream
         .getTracks()
         .forEach(
-          (track) => track.stop()
+          track => track.stop()
         );
 
       stream = null;
@@ -662,16 +850,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hands) {
 
       try {
-
         hands.close();
-
       } catch (error) {
-
-        console.warn(
-          "MediaPipe close:",
-          error
-        );
-
+        console.warn(error);
       }
 
       hands = null;
@@ -684,7 +865,6 @@ document.addEventListener("DOMContentLoaded", () => {
       overlay.classList.remove(
         "active"
       );
-
 
       setTimeout(() => {
 
@@ -699,13 +879,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         }
 
-
         overlay = null;
-
         video = null;
-
         canvas = null;
-
         ctx = null;
 
       }, 250);
@@ -755,7 +931,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener(
     "keydown",
-    (event) => {
+    event => {
 
       if (
         event.key === "Escape" &&
@@ -796,7 +972,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
         if (
-          !("speechSynthesis" in window)
+          !window.speechSynthesis
         ) {
 
           alert(
@@ -817,11 +993,14 @@ document.addEventListener("DOMContentLoaded", () => {
           );
 
 
-        speech.lang = "en-US";
+        speech.lang =
+          "en-US";
 
-        speech.rate = 0.95;
+        speech.rate =
+          0.95;
 
-        speech.pitch = 1;
+        speech.pitch =
+          1;
 
 
         speechSynthesis.speak(
@@ -840,12 +1019,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (voiceToTextBtn) {
 
-    const SpeechRecognition =
+    const Recognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
 
-    if (!SpeechRecognition) {
+    if (!Recognition) {
 
       voiceToTextBtn.addEventListener(
         "click",
@@ -861,7 +1040,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
 
       const recognition =
-        new SpeechRecognition();
+        new Recognition();
 
 
       recognition.lang =
@@ -874,30 +1053,30 @@ document.addEventListener("DOMContentLoaded", () => {
         false;
 
 
-      recognition.onstart = () => {
+      recognition.onstart =
+        () => {
 
-        voiceToTextBtn.textContent =
-          "🔴 Listening...";
+          voiceToTextBtn.textContent =
+            "🔴 Listening...";
 
-      };
+        };
 
 
       recognition.onresult =
-        (event) => {
+        event => {
 
-          const result =
+          const transcript =
             event.results[0][0]
               .transcript;
 
-
           textInput.value =
-            result;
+            transcript;
 
         };
 
 
       recognition.onerror =
-        (event) => {
+        event => {
 
           console.error(
             "Speech recognition:",
@@ -907,12 +1086,13 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
 
-      recognition.onend = () => {
+      recognition.onend =
+        () => {
 
-        voiceToTextBtn.textContent =
-          "🎙 Voice → Text";
+          voiceToTextBtn.textContent =
+            "🎙 Voice → Text";
 
-      };
+        };
 
 
       voiceToTextBtn.addEventListener(
@@ -926,7 +1106,7 @@ document.addEventListener("DOMContentLoaded", () => {
           } catch (error) {
 
             console.log(
-              "Recognition already running."
+              "Recognition already active."
             );
 
           }
@@ -940,11 +1120,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-     INITIAL LOG
+     INITIALIZED
      ========================================================= */
 
   console.log(
-    "SignBridge initialized successfully."
+    "SignBridge gesture recognition loaded."
   );
 
 });
