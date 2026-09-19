@@ -1,814 +1,800 @@
 document.addEventListener("DOMContentLoaded", () => {
-
-    const openCameraButton = document.getElementById("openCameraButton");
-    const textVoiceButton = document.getElementById("textVoiceButton");
-    const voiceTextButton = document.getElementById("voiceTextButton");
-
-    let cameraModal = null;
-    let videoElement = null;
-    let canvasElement = null;
-    let canvasCtx = null;
-
-    let hands = null;
-    let cameraStream = null;
-    let cameraRunning = false;
-
-
-    // ============================================================
-    // CREATE CAMERA MODAL
-    // ============================================================
-
-    function createCameraModal() {
-
-        if (document.getElementById("signbridgeCameraModal")) {
-            return;
-        }
-
-        cameraModal = document.createElement("div");
-
-        cameraModal.id = "signbridgeCameraModal";
-        cameraModal.className = "camera-modal";
-
-        cameraModal.innerHTML = `
-            <div class="camera-box">
-
-                <button class="camera-close" id="closeCameraButton">
-                    ×
-                </button>
-
-                <div class="camera-header">
-                    <div>
-                        <span class="camera-eyebrow">
-                            LIVE TRANSLATION
-                        </span>
-
-                        <h2>Show your sign</h2>
-                    </div>
-
-                    <div class="camera-status">
-                        <span class="status-dot"></span>
-                        CAMERA ACTIVE
-                    </div>
-                </div>
-
-                <div class="camera-view">
-
-                    <video
-                        id="signbridgeVideo"
-                        autoplay
-                        playsinline
-                        muted>
-                    </video>
-
-                    <canvas id="signbridgeCanvas"></canvas>
-
-                    <div class="camera-guide">
-
-                        <div class="guide-corner top-left"></div>
-                        <div class="guide-corner top-right"></div>
-                        <div class="guide-corner bottom-left"></div>
-                        <div class="guide-corner bottom-right"></div>
-
-                        <span>
-                            Place your hand inside the frame
-                        </span>
-
-                    </div>
-
-                    <div class="recognition-result">
-
-                        <small>HAND TRACKING</small>
-
-                        <strong id="recognitionText">
-                            Starting camera...
-                        </strong>
-
-                    </div>
-
-                </div>
-
-                <div class="camera-footer">
-
-                    <div>
-                        <span class="footer-label">
-                            DETECTION
-                        </span>
-
-                        <span id="handCount">
-                            Starting...
-                        </span>
-                    </div>
-
-                    <div>
-                        <span class="footer-label">
-                            STATUS
-                        </span>
-
-                        <span id="trackingStatus">
-                            Camera starting...
-                        </span>
-                    </div>
-
-                </div>
-
-            </div>
-        `;
-
-        document.body.appendChild(cameraModal);
-
-        videoElement =
-            document.getElementById("signbridgeVideo");
-
-        canvasElement =
-            document.getElementById("signbridgeCanvas");
-
-        canvasCtx =
-            canvasElement.getContext("2d");
-
-        document
-            .getElementById("closeCameraButton")
-            .addEventListener("click", closeCamera);
-
-        cameraModal.addEventListener("click", (event) => {
-
-            if (event.target === cameraModal) {
-                closeCamera();
-            }
-
-        });
-
-    }
-
-
-    // ============================================================
-    // STATUS
-    // ============================================================
-
-    function setStatus(text) {
-
-        const recognitionText =
-            document.getElementById("recognitionText");
-
-        const handCount =
-            document.getElementById("handCount");
-
-        const trackingStatus =
-            document.getElementById("trackingStatus");
-
-        if (recognitionText) {
-            recognitionText.textContent = text;
-        }
-
-        if (trackingStatus) {
-            trackingStatus.textContent = text;
-        }
-
-        if (handCount && text === "Camera ready") {
-            handCount.textContent = "Waiting for hand";
-        }
-
-    }
-
-
-    // ============================================================
-    // START CAMERA DIRECTLY
-    // ============================================================
-
-    async function startRealCamera() {
-
-        try {
-
-            cameraStream =
-                await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: "user",
-                        width: {
-                            ideal: 1280
-                        },
-                        height: {
-                            ideal: 720
-                        }
-                    },
-                    audio: false
-                });
-
-            videoElement.srcObject =
-                cameraStream;
-
-            await videoElement.play();
-
-            cameraRunning = true;
-
-            setStatus("Camera ready");
-
-            const handCount =
-                document.getElementById("handCount");
-
-            if (handCount) {
-                handCount.textContent =
-                    "Loading hand tracking...";
-            }
-
-            // Start tracking separately
-            startHandTracking();
-
-        } catch (error) {
-
-            console.error(
-                "Camera permission/error:",
-                error
-            );
-
-            const recognitionText =
-                document.getElementById("recognitionText");
-
-            const trackingStatus =
-                document.getElementById("trackingStatus");
-
-            const handCount =
-                document.getElementById("handCount");
-
-            if (recognitionText) {
-                recognitionText.textContent =
-                    "CAMERA FAILED";
-            }
-
-            if (trackingStatus) {
-                trackingStatus.textContent =
-                    "Allow camera permission";
-            }
-
-            if (handCount) {
-                handCount.textContent =
-                    error.message || "Camera unavailable";
-            }
-
-        }
-
-    }
-
-
-    // ============================================================
-    // START MEDIAPIPE
-    // ============================================================
-
-    async function startHandTracking() {
-
-        try {
-
-            // Check whether MediaPipe loaded
-            if (
-                typeof Hands === "undefined"
-            ) {
-
-                console.error(
-                    "MediaPipe Hands library not loaded."
-                );
-
-                setStatus(
-                    "Camera working • Tracking unavailable"
-                );
-
-                return;
-            }
-
-
-            hands = new Hands({
-
-                locateFile: (file) => {
-
-                    return (
-                        "https://cdn.jsdelivr.net/npm/" +
-                        "@mediapipe/hands/" +
-                        file
-                    );
-
-                }
-
-            });
-
-
-            hands.setOptions({
-
-                maxNumHands: 2,
-
-                modelComplexity: 1,
-
-                minDetectionConfidence: 0.5,
-
-                minTrackingConfidence: 0.5
-
-            });
-
-
-            hands.onResults(
-                handleHandResults
-            );
-
-
-            setStatus(
-                "Hand tracking ready"
-            );
-
-
-            // Start sending camera frames
-            processCameraFrames();
-
-
-        } catch (error) {
-
-            console.error(
-                "MediaPipe initialization failed:",
-                error
-            );
-
-            setStatus(
-                "Camera working • Tracking unavailable"
-            );
-
-        }
-
-    }
-
-
-    // ============================================================
-    // SEND FRAMES TO MEDIAPIPE
-    // ============================================================
-
-    async function processCameraFrames() {
-
-        if (
-            !cameraRunning ||
-            !hands
-        ) {
-            return;
-        }
-
-        try {
-
-            await hands.send({
-                image: videoElement
-            });
-
-        } catch (error) {
-
-            console.error(
-                "Hand tracking frame error:",
-                error
-            );
-
-        }
-
-        requestAnimationFrame(
-            processCameraFrames
-        );
-
-    }
-
-
-    // ============================================================
-    // HAND RESULTS
-    // ============================================================
-
-    function handleHandResults(results) {
-
-        if (!canvasElement || !canvasCtx) {
-            return;
-        }
-
-
-        const width =
-            videoElement.videoWidth || 1280;
-
-        const height =
-            videoElement.videoHeight || 720;
-
-
-        canvasElement.width = width;
-        canvasElement.height = height;
-
-
-        canvasCtx.clearRect(
-            0,
-            0,
-            width,
-            height
-        );
-
-
-        if (
-            results.multiHandLandmarks &&
-            results.multiHandLandmarks.length > 0
-        ) {
-
-            const count =
-                results.multiHandLandmarks.length;
-
-
-            const handCount =
-                document.getElementById("handCount");
-
-            const recognitionText =
-                document.getElementById("recognitionText");
-
-            const trackingStatus =
-                document.getElementById("trackingStatus");
-
-
-            if (handCount) {
-
-                handCount.textContent =
-                    count === 1
-                        ? "1 hand detected"
-                        : `${count} hands detected`;
-
-            }
-
-
-            if (recognitionText) {
-
-                recognitionText.textContent =
-                    count === 1
-                        ? "HAND DETECTED ✓"
-                        : `${count} HANDS DETECTED ✓`;
-
-            }
-
-
-            if (trackingStatus) {
-                trackingStatus.textContent =
-                    "Tracking active";
-            }
-
-
-            results.multiHandLandmarks.forEach(
-                (landmarks) => {
-
-                    drawConnectors(
-                        canvasCtx,
-                        landmarks,
-                        HAND_CONNECTIONS,
-                        {
-                            color: "#e47b67",
-                            lineWidth: 5
-                        }
-                    );
-
-
-                    drawLandmarks(
-                        canvasCtx,
-                        landmarks,
-                        {
-                            color: "#7655a8",
-                            lineWidth: 2,
-                            radius: 5
-                        }
-                    );
-
-                }
-            );
-
-
-        } else {
-
-            const handCount =
-                document.getElementById("handCount");
-
-            const recognitionText =
-                document.getElementById("recognitionText");
-
-            const trackingStatus =
-                document.getElementById("trackingStatus");
-
-
-            if (handCount) {
-                handCount.textContent =
-                    "No hand detected";
-            }
-
-            if (recognitionText) {
-                recognitionText.textContent =
-                    "SHOW YOUR HAND";
-            }
-
-            if (trackingStatus) {
-                trackingStatus.textContent =
-                    "Waiting for hand";
-            }
-
-        }
-
-    }
-
-
-    // ============================================================
-    // CLOSE CAMERA
-    // ============================================================
-
-    function closeCamera() {
-
-        cameraRunning = false;
-
-
-        if (cameraStream) {
-
-            cameraStream
-                .getTracks()
-                .forEach(
-                    track => track.stop()
-                );
-
-            cameraStream = null;
-
-        }
-
-
-        if (videoElement) {
-            videoElement.srcObject = null;
-        }
-
-
-        if (hands) {
-
-            try {
-                hands.close();
-            } catch (error) {
-                console.log(error);
-            }
-
-            hands = null;
-
-        }
-
-
-        if (cameraModal) {
-            cameraModal.classList.remove("active");
-        }
-
-
-        if (canvasCtx && canvasElement) {
-
-            canvasCtx.clearRect(
-                0,
-                0,
-                canvasElement.width,
-                canvasElement.height
-            );
-
-        }
-
-    }
-
-
-    // ============================================================
-    // CAMERA BUTTON
-    // ============================================================
-
-    if (openCameraButton) {
-
-        openCameraButton.addEventListener(
-            "click",
-            () => {
-
-                createCameraModal();
-
-                cameraModal.classList.add(
-                    "active"
-                );
-
-                startRealCamera();
-
-            }
-        );
-
-    }
-
-
-    // ============================================================
-    // ESC TO CLOSE
-    // ============================================================
-
-    document.addEventListener(
-        "keydown",
-        (event) => {
-
-            if (event.key === "Escape") {
-                closeCamera();
-            }
-
-        }
+  /* =========================================================
+     SIGNBRIDGE
+     Camera + MediaPipe Hands + Text-to-Speech + Voice-to-Text
+     ========================================================= */
+
+  const openCameraBtn = document.getElementById("openCameraBtn");
+  const textToVoiceBtn = document.getElementById("textToVoiceBtn");
+  const voiceToTextBtn = document.getElementById("voiceToTextBtn");
+
+  let cameraOverlay = null;
+  let videoElement = null;
+  let handCanvas = null;
+  let canvasCtx = null;
+
+  let mediaStream = null;
+  let hands = null;
+
+  let cameraRunning = false;
+  let processingFrame = false;
+  let animationFrameId = null;
+
+  /* =========================================================
+     HELPERS
+     ========================================================= */
+
+  function setStatus(message, type = "normal") {
+    const status = document.getElementById("cameraStatus");
+    if (!status) return;
+
+    status.textContent = message;
+
+    status.classList.remove(
+      "success",
+      "error",
+      "warning"
     );
 
+    if (type === "success") status.classList.add("success");
+    if (type === "error") status.classList.add("error");
+    if (type === "warning") status.classList.add("warning");
+  }
 
-    // ============================================================
-    // TEXT → VOICE
-    // ============================================================
+  function setDetectedSign(text) {
+    const detected = document.getElementById("detectedSign");
 
-    if (textVoiceButton) {
+    if (detected) {
+      detected.textContent = text;
+    }
+  }
 
-        textVoiceButton.addEventListener(
-            "click",
-            () => {
+  function clearCanvas() {
+    if (!canvasCtx || !handCanvas) return;
 
-                const text =
-                    prompt(
-                        "Enter something you want SignBridge to speak:"
-                    );
+    canvasCtx.clearRect(
+      0,
+      0,
+      handCanvas.width,
+      handCanvas.height
+    );
+  }
 
-                if (!text) {
-                    return;
-                }
+  /* =========================================================
+     CAMERA MODAL
+     ========================================================= */
 
-                if (
-                    !("speechSynthesis" in window)
-                ) {
+  function createCameraModal() {
+    if (cameraOverlay) return;
 
-                    alert(
-                        "Text-to-speech is not supported in this browser."
-                    );
+    cameraOverlay = document.createElement("div");
+    cameraOverlay.id = "cameraOverlay";
 
-                    return;
-                }
+    cameraOverlay.innerHTML = `
+      <div class="camera-modal">
 
-                window.speechSynthesis.cancel();
+        <div class="camera-header">
+          <div>
+            <span class="live-indicator"></span>
+            <span>LIVE SIGN DETECTION</span>
+          </div>
 
-                const speech =
-                    new SpeechSynthesisUtterance(
-                        text
-                    );
+          <button
+            class="camera-close"
+            id="closeCameraBtn"
+            aria-label="Close camera"
+          >
+            ×
+          </button>
+        </div>
 
-                speech.lang = "en-US";
-                speech.rate = 0.95;
+        <div class="camera-status" id="cameraStatus">
+          Opening camera...
+        </div>
 
-                window.speechSynthesis.speak(
-                    speech
-                );
+        <div class="camera-view">
 
-            }
-        );
+          <video
+            id="signbridgeVideo"
+            autoplay
+            playsinline
+            muted
+          ></video>
 
+          <canvas id="handCanvas"></canvas>
+
+          <div class="camera-guide">
+            <span class="guide-corner top-left"></span>
+            <span class="guide-corner top-right"></span>
+            <span class="guide-corner bottom-left"></span>
+            <span class="guide-corner bottom-right"></span>
+          </div>
+
+        </div>
+
+        <div class="recognition-result">
+
+          <div class="result-label">
+            DETECTED SIGN
+          </div>
+
+          <div id="detectedSign">
+            SHOW YOUR HAND
+          </div>
+
+          <div class="result-hint">
+            Keep your hand inside the frame
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(cameraOverlay);
+
+    videoElement = document.getElementById("signbridgeVideo");
+    handCanvas = document.getElementById("handCanvas");
+
+    canvasCtx = handCanvas.getContext("2d");
+
+    document
+      .getElementById("closeCameraBtn")
+      .addEventListener("click", closeCamera);
+
+    cameraOverlay.addEventListener("click", (event) => {
+      if (event.target === cameraOverlay) {
+        closeCamera();
+      }
+    });
+  }
+
+  /* =========================================================
+     START CAMERA
+     ========================================================= */
+
+  async function startCamera() {
+    createCameraModal();
+
+    cameraOverlay.classList.add("active");
+
+    setStatus("Opening camera...", "warning");
+    setDetectedSign("STARTING...");
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus(
+        "Camera is not supported by this browser.",
+        "error"
+      );
+
+      setDetectedSign("CAMERA ERROR");
+      return;
     }
 
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: {
+            ideal: 1280
+          },
+          height: {
+            ideal: 720
+          }
+        },
+        audio: false
+      });
 
-    // ============================================================
-    // VOICE → TEXT
-    // ============================================================
+      videoElement.srcObject = mediaStream;
 
-    if (voiceTextButton) {
+      await videoElement.play();
 
-        voiceTextButton.addEventListener(
-            "click",
-            () => {
+      cameraRunning = true;
 
-                const SpeechRecognition =
-                    window.SpeechRecognition ||
-                    window.webkitSpeechRecognition;
+      setStatus("Camera ready — loading hand tracking...", "success");
+      setDetectedSign("LOADING...");
 
-                if (!SpeechRecognition) {
+      await initializeHands();
 
-                    alert(
-                        "Voice recognition is not supported here. Please use Google Chrome."
-                    );
+    } catch (error) {
+      console.error("Camera error:", error);
 
-                    return;
-                }
+      cameraRunning = false;
 
-                const recognition =
-                    new SpeechRecognition();
-
-                recognition.lang = "en-US";
-                recognition.continuous = false;
-                recognition.interimResults = false;
-
-                recognition.onstart = () => {
-
-                    voiceTextButton.textContent =
-                        "Listening...";
-
-                };
-
-                recognition.onresult =
-                    (event) => {
-
-                        const transcript =
-                            event.results[0][0]
-                                .transcript;
-
-                        alert(
-                            "You said:\n\n" +
-                            transcript
-                        );
-
-                    };
-
-                recognition.onerror =
-                    (event) => {
-
-                        console.error(
-                            "Speech recognition:",
-                            event.error
-                        );
-
-                    };
-
-                recognition.onend = () => {
-
-                    voiceTextButton.textContent =
-                        "Use Microphone";
-
-                };
-
-                recognition.start();
-
-            }
+      if (error.name === "NotAllowedError") {
+        setStatus(
+          "Camera permission blocked. Allow camera access.",
+          "error"
         );
+      } else if (error.name === "NotFoundError") {
+        setStatus(
+          "No camera was found on this device.",
+          "error"
+        );
+      } else if (error.name === "NotReadableError") {
+        setStatus(
+          "Camera is already being used by another app.",
+          "error"
+        );
+      } else {
+        setStatus(
+          "Unable to open camera.",
+          "error"
+        );
+      }
 
+      setDetectedSign("CAMERA ERROR");
+    }
+  }
+
+  /* =========================================================
+     MEDIAPIPE INITIALIZATION
+     ========================================================= */
+
+  async function initializeHands() {
+    if (!cameraRunning) return;
+
+    if (typeof Hands === "undefined") {
+      console.error("MediaPipe Hands library not found.");
+
+      setStatus(
+        "Hand tracking library failed to load.",
+        "error"
+      );
+
+      setDetectedSign("TRACKING ERROR");
+      return;
     }
 
+    try {
+      setStatus(
+        "Loading hand tracking...",
+        "warning"
+      );
 
-    // ============================================================
-    // SCROLL REVEAL
-    // ============================================================
+      hands = new Hands({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }
+      });
 
-    const revealElements =
-        document.querySelectorAll(".reveal");
+      hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      hands.onResults(handleHandResults);
+
+      setStatus(
+        "Hand tracking ready — show your hand",
+        "success"
+      );
+
+      setDetectedSign("SHOW YOUR HAND");
+
+      startFrameLoop();
+
+    } catch (error) {
+      console.error(
+        "MediaPipe initialization error:",
+        error
+      );
+
+      setStatus(
+        "Hand tracking failed to initialize.",
+        "error"
+      );
+
+      setDetectedSign("TRACKING ERROR");
+    }
+  }
+
+  /* =========================================================
+     FRAME LOOP
+     ========================================================= */
+
+  function startFrameLoop() {
+    if (!cameraRunning) return;
+
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+    }
+
+    const processFrame = async () => {
+      if (!cameraRunning) return;
+
+      if (
+        videoElement &&
+        videoElement.readyState >= 2 &&
+        !processingFrame
+      ) {
+        processingFrame = true;
+
+        try {
+          await hands.send({
+            image: videoElement
+          });
+        } catch (error) {
+          console.error(
+            "MediaPipe frame error:",
+            error
+          );
+        } finally {
+          processingFrame = false;
+        }
+      }
+
+      animationFrameId =
+        requestAnimationFrame(processFrame);
+    };
+
+    processFrame();
+  }
+
+  /* =========================================================
+     HAND RESULTS
+     ========================================================= */
+
+  function handleHandResults(results) {
+    if (!cameraRunning) return;
+
+    if (!videoElement || !handCanvas || !canvasCtx) {
+      return;
+    }
+
+    const width =
+      videoElement.videoWidth || 1280;
+
+    const height =
+      videoElement.videoHeight || 720;
 
     if (
-        "IntersectionObserver" in window
+      handCanvas.width !== width ||
+      handCanvas.height !== height
     ) {
+      handCanvas.width = width;
+      handCanvas.height = height;
+    }
 
-        const observer =
-            new IntersectionObserver(
-                (entries) => {
+    clearCanvas();
 
-                    entries.forEach(
-                        (entry) => {
+    const landmarks =
+      results.multiHandLandmarks || [];
 
-                            if (
-                                entry.isIntersecting
-                            ) {
+    /* ---------------------------------------------------------
+       NO HAND
+       --------------------------------------------------------- */
 
-                                entry.target.classList.add(
-                                    "visible"
-                                );
+    if (landmarks.length === 0) {
+      setStatus(
+        "Hand tracking ready — show your hand",
+        "success"
+      );
 
-                            }
+      setDetectedSign("SHOW YOUR HAND");
 
-                        }
-                    );
+      return;
+    }
 
-                },
-                {
-                    threshold: 0.12
-                }
-            );
+    /* ---------------------------------------------------------
+       HAND DETECTED
+       --------------------------------------------------------- */
 
-        revealElements.forEach(
-            element =>
-                observer.observe(element)
+    const handCount = landmarks.length;
+
+    if (handCount === 1) {
+      setStatus(
+        "1 hand detected",
+        "success"
+      );
+    } else {
+      setStatus(
+        `${handCount} hands detected`,
+        "success"
+      );
+    }
+
+    setDetectedSign(
+      handCount === 1
+        ? "HAND DETECTED"
+        : `${handCount} HANDS DETECTED`
+    );
+
+    /* ---------------------------------------------------------
+       DRAW LANDMARKS
+       --------------------------------------------------------- */
+
+    if (
+      typeof drawConnectors === "function" &&
+      typeof drawLandmarks === "function" &&
+      typeof HAND_CONNECTIONS !== "undefined"
+    ) {
+      for (const landmarksSet of landmarks) {
+
+        drawConnectors(
+          canvasCtx,
+          landmarksSet,
+          HAND_CONNECTIONS,
+          {
+            color: "#e47b67",
+            lineWidth: 4
+          }
         );
+
+        drawLandmarks(
+          canvasCtx,
+          landmarksSet,
+          {
+            color: "#7655a8",
+            lineWidth: 2,
+            radius: 5
+          }
+        );
+      }
+    } else {
+      /*
+       * Fallback drawing if MediaPipe drawing utilities
+       * are unavailable.
+       */
+
+      for (const landmarksSet of landmarks) {
+
+        canvasCtx.fillStyle = "#7655a8";
+
+        for (const point of landmarksSet) {
+
+          const x =
+            point.x * handCanvas.width;
+
+          const y =
+            point.y * handCanvas.height;
+
+          canvasCtx.beginPath();
+
+          canvasCtx.arc(
+            x,
+            y,
+            6,
+            0,
+            Math.PI * 2
+          );
+
+          canvasCtx.fill();
+        }
+      }
+    }
+  }
+
+  /* =========================================================
+     CLOSE CAMERA
+     ========================================================= */
+
+  function closeCamera() {
+    cameraRunning = false;
+    processingFrame = false;
+
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+
+    /* Stop camera */
+
+    if (mediaStream) {
+      mediaStream
+        .getTracks()
+        .forEach((track) => track.stop());
+
+      mediaStream = null;
+    }
+
+    /* Stop video */
+
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.srcObject = null;
+    }
+
+    /* Close MediaPipe */
+
+    if (hands) {
+      try {
+        hands.close();
+      } catch (error) {
+        console.warn(
+          "MediaPipe close warning:",
+          error
+        );
+      }
+
+      hands = null;
+    }
+
+    clearCanvas();
+
+    if (cameraOverlay) {
+      cameraOverlay.classList.remove("active");
+
+      setTimeout(() => {
+        if (
+          cameraOverlay &&
+          cameraOverlay.parentNode
+        ) {
+          cameraOverlay.parentNode.removeChild(
+            cameraOverlay
+          );
+        }
+
+        cameraOverlay = null;
+        videoElement = null;
+        handCanvas = null;
+        canvasCtx = null;
+
+      }, 250);
+    }
+  }
+
+  /* =========================================================
+     OPEN CAMERA BUTTON
+     ========================================================= */
+
+  if (openCameraBtn) {
+    openCameraBtn.addEventListener(
+      "click",
+      startCamera
+    );
+  }
+
+  /* =========================================================
+     ESC KEY
+     ========================================================= */
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key === "Escape" &&
+        cameraOverlay
+      ) {
+        closeCamera();
+      }
+    }
+  );
+
+  /* =========================================================
+     TEXT → VOICE
+     ========================================================= */
+
+  if (textToVoiceBtn) {
+    textToVoiceBtn.addEventListener(
+      "click",
+      () => {
+
+        const textInput =
+          document.querySelector(
+            "#textInput"
+          ) ||
+          document.querySelector(
+            "textarea"
+          );
+
+        if (!textInput) return;
+
+        const text =
+          textInput.value.trim();
+
+        if (!text) {
+          alert(
+            "Please enter some text first."
+          );
+
+          return;
+        }
+
+        if (
+          !("speechSynthesis" in window)
+        ) {
+          alert(
+            "Text-to-speech is not supported in this browser."
+          );
+
+          return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        const speech =
+          new SpeechSynthesisUtterance(text);
+
+        speech.lang = "en-US";
+        speech.rate = 0.95;
+        speech.pitch = 1;
+
+        window.speechSynthesis.speak(
+          speech
+        );
+      }
+    );
+  }
+
+  /* =========================================================
+     VOICE → TEXT
+     ========================================================= */
+
+  if (voiceToTextBtn) {
+
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+
+      voiceToTextBtn.addEventListener(
+        "click",
+        () => {
+          alert(
+            "Voice recognition is not supported in this browser. Try Google Chrome."
+          );
+        }
+      );
 
     } else {
 
-        revealElements.forEach(
-            element =>
-                element.classList.add("visible")
+      const recognition =
+        new SpeechRecognition();
+
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+
+        voiceToTextBtn.classList.add(
+          "recording"
         );
 
-    }
+        voiceToTextBtn.setAttribute(
+          "aria-label",
+          "Listening..."
+        );
+      };
 
+      recognition.onresult = (event) => {
 
-    // ============================================================
-    // CURSOR GLOW
-    // ============================================================
+        const transcript =
+          event.results[0][0].transcript;
 
-    const cursorGlow =
-        document.createElement("div");
+        const textInput =
+          document.querySelector(
+            "#textInput"
+          ) ||
+          document.querySelector(
+            "textarea"
+          );
 
-    cursorGlow.className =
-        "cursor-glow";
+        if (textInput) {
+          textInput.value = transcript;
 
-    document.body.appendChild(
-        cursorGlow
-    );
+          textInput.dispatchEvent(
+            new Event("input", {
+              bubbles: true
+            })
+          );
+        }
+      };
 
+      recognition.onerror = (event) => {
+        console.error(
+          "Speech recognition error:",
+          event.error
+        );
+      };
 
-    document.addEventListener(
-        "mousemove",
-        (event) => {
+      recognition.onend = () => {
 
-            cursorGlow.style.left =
-                `${event.clientX}px`;
+        voiceToTextBtn.classList.remove(
+          "recording"
+        );
 
-            cursorGlow.style.top =
-                `${event.clientY}px`;
+        voiceToTextBtn.setAttribute(
+          "aria-label",
+          "Voice to text"
+        );
+      };
+
+      voiceToTextBtn.addEventListener(
+        "click",
+        () => {
+
+          try {
+            recognition.start();
+          } catch (error) {
+            console.warn(
+              "Recognition could not start:",
+              error
+            );
+          }
 
         }
+      );
+    }
+  }
+
+  /* =========================================================
+     SCROLL REVEAL
+     ========================================================= */
+
+  const revealElements =
+    document.querySelectorAll(
+      ".reveal, .fade-up, .project-card, .feature-card"
     );
 
+  if (
+    revealElements.length &&
+    "IntersectionObserver" in window
+  ) {
 
-    console.log(
-        "SignBridge loaded successfully ✓"
+    const observer =
+      new IntersectionObserver(
+        (entries) => {
+
+          entries.forEach(
+            (entry) => {
+
+              if (
+                entry.isIntersecting
+              ) {
+
+                entry.target.classList.add(
+                  "visible"
+                );
+
+                observer.unobserve(
+                  entry.target
+                );
+              }
+
+            }
+          );
+
+        },
+        {
+          threshold: 0.12
+        }
+      );
+
+    revealElements.forEach(
+      (element) => {
+        observer.observe(element);
+      }
     );
+  }
+
+  /* =========================================================
+     CURSOR GLOW
+     ========================================================= */
+
+  const cursorGlow =
+    document.querySelector(
+      ".cursor-glow"
+    );
+
+  if (cursorGlow) {
+
+    document.addEventListener(
+      "mousemove",
+      (event) => {
+
+        cursorGlow.style.left =
+          `${event.clientX}px`;
+
+        cursorGlow.style.top =
+          `${event.clientY}px`;
+
+      }
+    );
+  }
 
 });
