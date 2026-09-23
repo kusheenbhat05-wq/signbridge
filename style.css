@@ -1095,3 +1095,126 @@ h3 {
     min-height: 350px;
   }
 }
+/* =========================================================
+   FINAL VISUAL FIXES
+   ========================================================= */
+
+.features-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  margin-top: 45px;
+}
+
+.feature-card {
+  min-height: 240px;
+  padding: 32px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+  transition: 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.feature-card.large {
+  grid-row: span 2;
+}
+
+.feature-icon {
+  font-size: 38px;
+  margin-bottom: 35px;
+}
+
+.feature-card h3 {
+  color: white;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.feature-card p {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.feature-card button,
+.feature-card .text-button {
+  margin-top: 25px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: #f2b59e;
+  font-weight: 700;
+}
+
+/* Conversation / future feature */
+.feature-card:last-child {
+  background: rgba(228, 123, 103, 0.10);
+}
+
+/* Demo section */
+.demo-section {
+  position: relative;
+  padding: 120px 7%;
+  background: #fffaf4;
+}
+
+.demo-wrapper {
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* Footer */
+footer {
+  display: block;
+  width: 100%;
+  padding: 65px 7% 35px;
+  background: #302836;
+  color: white;
+  text-align: center;
+}
+
+footer .footer-logo {
+  color: white;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+footer p {
+  margin-top: 12px;
+  color: rgba(255,255,255,0.55);
+}
+
+footer span {
+  display: block;
+  margin-top: 25px;
+  color: rgba(255,255,255,0.35);
+  font-size: 12px;
+}
+
+/* Prevent sections from collapsing */
+.features-section,
+.demo-section {
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 700px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card.large {
+    grid-row: auto;
+  }
+
+  .demo-section {
+    padding: 80px 5%;
+  }
+}
