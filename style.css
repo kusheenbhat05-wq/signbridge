@@ -1218,3 +1218,166 @@ footer span {
     padding: 80px 5%;
   }
 }
+/* =========================================================
+   SIGNBRIDGE — FINAL ALIGNMENT FIX
+   ========================================================= */
+
+/* Keep major sections centered */
+main > section {
+  width: 100%;
+  position: relative;
+}
+
+/* ---------------- FEATURES ---------------- */
+
+.features,
+.features-section {
+  width: 100%;
+  padding: 110px 6%;
+  background: #493268;
+  color: #fff;
+}
+
+.features > *,
+.features-section > * {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.features .section-heading,
+.features-section .section-heading {
+  text-align: center;
+  margin: 0 auto 55px;
+}
+
+.features .section-heading p,
+.features-section .section-heading p {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.features-grid {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.feature-card {
+  width: 100%;
+  min-height: 260px;
+  padding: 34px;
+  border-radius: 25px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  text-align: left;
+}
+
+.feature-card h3 {
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.feature-card p {
+  color: rgba(255,255,255,0.68);
+  line-height: 1.7;
+}
+
+.feature-card.large {
+  grid-column: span 2;
+}
+
+/* ---------------- DEMO / TRY IT ---------------- */
+
+.demo,
+.demo-section {
+  width: 100%;
+  padding: 110px 6%;
+  background: #f7f0e7;
+}
+
+.demo-wrapper {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  align-items: center;
+  gap: 70px;
+}
+
+.demo-copy {
+  text-align: left;
+}
+
+.demo-copy h2 {
+  margin: 0;
+}
+
+.demo-copy p {
+  max-width: 520px;
+}
+
+/* Text input card */
+.demo-card {
+  width: 100%;
+  max-width: 620px;
+  margin-left: auto;
+  padding: 30px;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(48,40,54,0.10);
+}
+
+/* ---------------- FOOTER ---------------- */
+
+footer {
+  width: 100%;
+  padding: 55px 6% 35px;
+  background: #302836;
+  color: #fff;
+  text-align: center;
+}
+
+footer > * {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+footer p,
+footer span {
+  color: rgba(255,255,255,0.58);
+}
+
+/* ---------------- MOBILE ---------------- */
+
+@media (max-width: 850px) {
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card.large {
+    grid-column: span 1;
+  }
+
+  .demo-wrapper {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .demo-copy {
+    text-align: center;
+  }
+
+  .demo-copy p {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .demo-card {
+    margin: 0 auto;
+  }
+}
