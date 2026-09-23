@@ -1096,288 +1096,149 @@ h3 {
   }
 }
 /* =========================================================
-   FINAL VISUAL FIXES
+   SIGNBRIDGE FINAL FEATURE + DEMO VISUAL FIX
    ========================================================= */
 
-.features-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 18px;
-  margin-top: 45px;
-}
-
-.feature-card {
-  min-height: 240px;
-  padding: 32px;
-  border-radius: 26px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
-  transition: 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.feature-card.large {
-  grid-row: span 2;
-}
-
-.feature-icon {
-  font-size: 38px;
-  margin-bottom: 35px;
-}
-
-.feature-card h3 {
-  color: white;
-  font-size: 22px;
-  margin-bottom: 10px;
-}
-
-.feature-card p {
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.feature-card button,
-.feature-card .text-button {
-  margin-top: 25px;
-  padding: 12px 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.08);
-  color: #f2b59e;
-  font-weight: 700;
-}
-
-/* Conversation / future feature */
-.feature-card:last-child {
-  background: rgba(228, 123, 103, 0.10);
-}
-
-/* Demo section */
-.demo-section {
-  position: relative;
-  padding: 120px 7%;
-  background: #fffaf4;
-}
-
-.demo-wrapper {
-  max-width: 1200px;
-  margin: auto;
-}
-
-/* Footer */
-footer {
-  display: block;
+/* FEATURES SECTION */
+section:has(.feature-card) {
   width: 100%;
-  padding: 65px 7% 35px;
-  background: #302836;
-  color: white;
+  padding: 110px 6%;
+  background: #493268 !important;
+  color: #ffffff !important;
+}
+
+section:has(.feature-card) .section-heading {
+  max-width: 720px;
+  margin: 0 auto 55px;
   text-align: center;
 }
 
-footer .footer-logo {
-  color: white;
-  font-size: 28px;
-  font-weight: 700;
+section:has(.feature-card) .section-heading h2,
+section:has(.feature-card) .section-heading p {
+  color: #ffffff;
 }
 
-footer p {
-  margin-top: 12px;
-  color: rgba(255,255,255,0.55);
+section:has(.feature-card) .section-heading p {
+  color: rgba(255,255,255,0.68);
+  margin-left: auto;
+  margin-right: auto;
 }
 
-footer span {
-  display: block;
-  margin-top: 25px;
-  color: rgba(255,255,255,0.35);
-  font-size: 12px;
+/* FEATURE GRID */
+section:has(.feature-card) .features-grid {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  display: grid !important;
+  grid-template-columns: 2fr 1fr !important;
+  grid-template-rows: 1fr 1fr;
+  gap: 20px;
 }
 
-/* Prevent sections from collapsing */
-.features-section,
-.demo-section {
-  width: 100%;
+/* FEATURE CARDS */
+section:has(.feature-card) .feature-card {
+  min-height: 250px;
+  padding: 34px;
+  border-radius: 26px;
+  background: rgba(255,255,255,0.085) !important;
+  border: 1px solid rgba(255,255,255,0.13);
+  color: white !important;
   overflow: hidden;
 }
 
-@media (max-width: 700px) {
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .feature-card.large {
-    grid-row: auto;
-  }
-
-  .demo-section {
-    padding: 80px 5%;
-  }
-}
-/* =========================================================
-   SIGNBRIDGE — FINAL ALIGNMENT FIX
-   ========================================================= */
-
-/* Keep major sections centered */
-main > section {
-  width: 100%;
-  position: relative;
+section:has(.feature-card) .feature-card.large {
+  grid-row: span 2;
+  grid-column: span 1;
 }
 
-/* ---------------- FEATURES ---------------- */
+section:has(.feature-card) .feature-card h3 {
+  color: white !important;
+}
 
-.features,
-.features-section {
+section:has(.feature-card) .feature-card p {
+  color: rgba(255,255,255,0.68) !important;
+}
+
+section:has(.feature-card) .feature-icon {
+  color: #f2a18f;
+}
+
+section:has(.feature-card) .feature-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255,255,255,0.13) !important;
+}
+
+/* CAMERA BUTTON INSIDE FEATURE */
+section:has(.feature-card) button {
+  color: #ffffff;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.16);
+}
+
+/* DEMO SECTION */
+section:has(#textInput) {
   width: 100%;
   padding: 110px 6%;
-  background: #493268;
-  color: #fff;
+  background: #f7f0e7 !important;
 }
 
-.features > *,
-.features-section > * {
+section:has(#textInput) > * {
   max-width: 1180px;
   margin-left: auto;
   margin-right: auto;
 }
 
-.features .section-heading,
-.features-section .section-heading {
-  text-align: center;
-  margin: 0 auto 55px;
-}
-
-.features .section-heading p,
-.features-section .section-heading p {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.features-grid {
-  width: min(1180px, 100%);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-
-.feature-card {
+section:has(#textInput) .demo-wrapper {
   width: 100%;
-  min-height: 260px;
-  padding: 34px;
-  border-radius: 25px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #fff;
-  text-align: left;
-}
-
-.feature-card h3 {
-  color: #fff;
-  margin-bottom: 12px;
-}
-
-.feature-card p {
-  color: rgba(255,255,255,0.68);
-  line-height: 1.7;
-}
-
-.feature-card.large {
-  grid-column: span 2;
-}
-
-/* ---------------- DEMO / TRY IT ---------------- */
-
-.demo,
-.demo-section {
-  width: 100%;
-  padding: 110px 6%;
-  background: #f7f0e7;
-}
-
-.demo-wrapper {
-  width: min(1180px, 100%);
-  margin: 0 auto;
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
   align-items: center;
   gap: 70px;
 }
 
-.demo-copy {
+section:has(#textInput) .demo-copy {
   text-align: left;
 }
 
-.demo-copy h2 {
-  margin: 0;
-}
-
-.demo-copy p {
-  max-width: 520px;
-}
-
-/* Text input card */
-.demo-card {
+section:has(#textInput) .demo-card {
   width: 100%;
-  max-width: 620px;
-  margin-left: auto;
-  padding: 30px;
+  background: #ffffff;
   border-radius: 28px;
-  background: #fff;
+  padding: 30px;
   box-shadow: 0 20px 60px rgba(48,40,54,0.10);
 }
 
-/* ---------------- FOOTER ---------------- */
-
+/* FOOTER */
 footer {
   width: 100%;
-  padding: 55px 6% 35px;
-  background: #302836;
-  color: #fff;
+  background: #302836 !important;
+  color: white !important;
   text-align: center;
-}
-
-footer > * {
-  margin-left: auto;
-  margin-right: auto;
+  padding: 60px 6% 35px;
 }
 
 footer p,
 footer span {
-  color: rgba(255,255,255,0.58);
+  color: rgba(255,255,255,0.58) !important;
 }
 
-/* ---------------- MOBILE ---------------- */
-
+/* MOBILE */
 @media (max-width: 850px) {
 
-  .features-grid {
-    grid-template-columns: 1fr;
+  section:has(.feature-card) .features-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto;
   }
 
-  .feature-card.large {
-    grid-column: span 1;
+  section:has(.feature-card) .feature-card.large {
+    grid-row: auto;
   }
 
-  .demo-wrapper {
+  section:has(#textInput) .demo-wrapper {
     grid-template-columns: 1fr;
     gap: 40px;
   }
 
-  .demo-copy {
+  section:has(#textInput) .demo-copy {
     text-align: center;
-  }
-
-  .demo-copy p {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .demo-card {
-    margin: 0 auto;
   }
 }
